@@ -1,0 +1,110 @@
+﻿@inject IJSRuntime JsRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@using FoodHub.Blazor.Client.ApiService;
+@using FoodHub.Blazor.Client.Component;
+@using FoodHub.Blazor.Client.Services;
+@inject ToastService ToastService;
+<ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
+    <AuthorizeView>
+        <Authorized>
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    @{
+                        var userName = context.User.FindFirst(ClaimTypes.Name)?.Value;
+                        Console.WriteLine($"用户名:{userName}");
+                    }
+          
+            <span class="ms-1">@userName</span>
+       
+        </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">  
+
+                    <li><a class="dropdown-item" >设置</a></li>
+                    <li><a class="dropdown-item" >活动日志</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <a class="dropdown-item"  @onclick="SubmitLogout">退出登录</a>
+                    </li>
+                    </ul>
+        </li>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView>
+        <NotAuthorized>
+
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/login">登录</NavLink>
+            </li>
+        </NotAuthorized>
+
+    </AuthorizeView>
+</ul>
+<form action="/login" method="post" id="navLogoutForm" style="display:none;"></form>
+
+@code {
+
+    [Inject]
+    private AuthService? _authService { get; set; }
+
+
+    private async Task SubmitLogout()
+    {
+        // await JsRuntime.InvokeVoidAsync("eval", "document.getElementById('navLogoutForm').submit()");
+        try
+        {
+            await _authService!.LogoutAsync();
+
+            NavigationManager.NavigateTo("/login", forceLoad: true);
+
+            // NavigationManager.NavigateTo("/login");
+
+            Console.WriteLine($"退出登录失败23333333333");
+        }
+        catch (OperationCanceledException e)
+        {
+
+            Console.WriteLine($"退出登录失败{e.Message}");
+
+            //静默
+            return;
+
+        }
+        catch (ArgumentNullException e)
+        {
+            Console.WriteLine($"退出登录失败{e.Message}");
+
+            ToastService.ShowError("参数为空,异常!", "参数异常");
+
+        }
+        catch (ArgumentException e)
+        {
+            Console.WriteLine($"退出登录失败{e.Message}");
+
+            ToastService.ShowError("参数出错!", "参数异常");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"退出登录失败{e.Message}");    
+
+        }
+
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        Console.WriteLine($"IsAuthentication = {state.User.Identity?.IsAuthenticated}");
+
+        Console.WriteLine($"Name = {state.User.Identity?.Name}");
+
+        foreach (var c in state.User.Claims)
+        {
+            Console.WriteLine($"{c.Type} = {c.Value}");    
+        }
+
+    }
+
+}

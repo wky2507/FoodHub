@@ -1,0 +1,3 @@
+# InputSelect 绑定的EnventCallBack断点打不进问题
+
+InputSelect的事件回调是打不进断点的，不用纠结，是环境坑

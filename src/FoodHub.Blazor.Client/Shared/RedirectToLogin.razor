@@ -1,0 +1,21 @@
+﻿@using System.Web
+@inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime 
+@code {
+
+    protected override void OnInitialized()
+    {
+        // var returnUrl = HttpUtility.UrlEncode($"/{Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri))}");
+
+        // JsRuntime.InvokeVoidAsync("location.replace", $"/login?returnUrl={returnUrl}");
+
+        // var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        // Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(currentUri)}", replace: true);
+
+        Navigation.NavigateTo("/login", replace: true);
+
+    }
+
+
+}

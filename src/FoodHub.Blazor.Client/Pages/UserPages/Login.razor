@@ -1,0 +1,164 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Authorization
+@using FoodHub.Blazor.Client.Layout
+@layout EmptyLayout;
+@inherits FoodHub.Blazor.Client.Helper.BlazorComponent;
+@using FoodHub.Blazor.Client.Component;
+@attribute [AllowAnonymous]
+@* @attribute [Authorize] *@
+<div class="bg-light min-vh-100">
+
+    <div class="container-fluid">
+
+        <div class="row min-vh-100">
+
+            <!-- 左侧宣传区 -->
+            <div class="col-lg-7 d-none d-lg-flex
+                        flex-column
+                        justify-content-center
+                        align-items-center
+                        bg-primary text-white" ,style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%) !important;">
+
+                <div class="text-center">
+
+                    <div class="mb-4 text-center">
+
+                        <i class="fas fa-store fa-4x mb-3"></i>
+
+                        <h1 class="display-4 fw-bold">
+                            FoodHub
+                        </h1>
+
+                    </div>
+
+                    <p class="lead mt-4">
+                        新一代外卖电商管理平台
+                    </p>
+
+                    <p class="mt-3">
+                        商家管理 · 商品管理 · 订单管理 · 配送管理
+                    </p>
+
+                </div>
+
+            </div>
+
+            <!-- 右侧登录区 -->
+
+            <div class="col-lg-5 d-flex align-items-center" style="background-color:#fffbeb;min-height: 100vh;">
+
+                <div class="w-100">
+
+                    <div class="row justify-content-center">
+
+                        <div class="col-md-8">
+
+                            <div class="card shadow border-0 rounded-lg bg-warning-subtle">
+                              
+                                <div class="card-header border-0 bg-transparent">
+                        
+                                    <h3 class="text-center my-3">
+                                        FoodHub 商家后台
+                                    </h3>
+
+                                </div>
+                                <EditForm Model="LoginModel"  OnValidSubmit="Login_Click">
+                                    <DataAnnotationsValidator />
+                                    @* 全局汇总错误 *@
+                                    @* <ValidationSummary class="text-danger mb-3"/> *@
+                                <div class="card-body">
+
+                                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                                        {
+                                            <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                @ErrorMessage
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="() => ErrorMessage = null"></button>
+                                            </div>
+
+                                        }
+
+                                    <div class="mb-3">
+                                        <label class="form-label">用户名</label>
+                                        <InputText class="form-control"type="text" id="inputEmail" @bind-value=LoginModel.UserName
+                                               placeholder="请输入用户名" />
+                                               <ValidationMessage For="@(()=>LoginModel.UserName)" class="text-danger"/>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">密码</label>
+                                        <InputText type="password"
+                                               class="form-control"
+                                               placeholder="请输入密码" @bind-value=LoginModel.Password/>
+                                               <ValidationMessage For="@(()=>LoginModel.Password)" class="text-danger"/>
+                                    </div>
+                                    <div class="form-check mt-3 d-flex justify-content-between align-items-center">
+                                        <div>
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="rememberMe"
+                                               @bind="LoginModel.RememberMe"
+                                        >
+
+                                        <label class="form-check-label"
+                                               for="rememberMe" >
+
+                                            记住我
+
+                                        </label>
+                                        </div>
+                                        <NavLink href="/register" class="text-decoration-none" >注册账号</NavLink>
+                                    </div>
+                                        <div class="d-grid mt-4">
+                                            <!-- 🆕 推荐加上 isSubmitting 加载状态（避免重复点击） -->
+                                            <button class="btn btn-primary" type="submit" disabled="@IsSubmitting">
+                                                @if (IsSubmitting)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                    <span>登录中...</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>登录</span>
+                                                }
+                                            </button>
+                                        </div>
+
+
+                                </div>
+                                </EditForm>
+                                <div class="card-footer text-center bg-white">
+
+                                    <a href="#">
+                                        忘记密码？
+                                    </a>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="text-center mt-4">
+
+    <small class="text-muted">
+        FoodHub v1.0.0
+    </small>
+
+</div>
+@code{
+   
+
+}

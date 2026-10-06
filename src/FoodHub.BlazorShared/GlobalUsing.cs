@@ -1,0 +1,1 @@
+﻿global using FoodHub.Domain.Share.Constants;

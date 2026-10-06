@@ -1,0 +1,55 @@
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: foodhub-sqlserver
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "FoodHub_12345678!"
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+
+  api:
+    build:
+      context: .
+      dockerfile: src/FoodHub.PublicApi/Dockerfile
+
+    container_name: foodhub-api
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_HTTP_PORTS: 8080
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      - sqlserver
+
+    volumes:
+      - foodhub_uploads:/app/wwwroot/Uploads
+
+
+  client:
+    build:
+      context: .
+      dockerfile: src/FoodHub.Blazor.Client/Dockerfile
+
+    container_name: foodhub-client
+
+    ports:
+      - "8081:80"
+
+    depends_on:
+      - api
+
+
+volumes:
+  sqlserver_data:
+  foodhub_uploads:

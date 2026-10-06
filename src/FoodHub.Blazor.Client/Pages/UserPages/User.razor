@@ -1,0 +1,15 @@
+﻿@using FoodHub.Blazor.Client.Layout
+@attribute [Authorize(Roles = $"{RoleConstants.Roles.USER}")]
+
+@layout EmptyLayout
+
+<div class="w‑100" style="max-width:650px;">
+    <p>您好！您当前以普通用户身份浏览。</p>
+        <NavLink class="btn btn-primary" href="/applicant/merchantApply">
+            点击此处，申请开通商户权限
+        </NavLink>
+    </div>
+
+@code {
+
+}

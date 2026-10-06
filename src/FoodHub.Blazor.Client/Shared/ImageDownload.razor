@@ -1,0 +1,72 @@
+﻿@using Microsoft.AspNetCore.Components
+@using System.Net.Http.Headers
+@inject HttpService httpService
+
+@if (!string.IsNullOrWhiteSpace(ImageUrl))
+{
+    <img src="@ImageUrl"
+         alt="@Alt"
+         class="@Class"
+         style="@Style"
+         onclick="@Onclick"
+         />
+
+  
+}
+
+@code{
+
+    [Parameter]
+    public string? Src { get; set; }
+    [Parameter]
+    public string Alt { get; set; } = string.Empty;
+    [Parameter]
+    public string? Class { get; set; }
+    [Parameter]
+    public string? Style { get; set; }
+    [Parameter]
+    public Func< string ,Task<HttpResponseMessage> >? GetImageBytesAsync { get; set; } = default!;
+    [Parameter]
+    public EventCallback Onclick { get; set; }
+    
+    private string? ImageUrl;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+
+
+            if (string.IsNullOrWhiteSpace(Src))
+            {
+                return;
+            }
+
+            if (GetImageBytesAsync == null) return;
+
+            using var response =  await GetImageBytesAsync(Src);
+
+            if (response == null)
+            {
+                return;
+
+            }
+
+            if (response.Content == null)
+            {
+                return;
+
+            }
+
+            var contentType = response.Content.Headers?.ContentType?.MediaType ?? "image/png";
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+
+            ImageUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+        }
+        catch (Exception e)
+        {
+            
+        }
+    }
+}

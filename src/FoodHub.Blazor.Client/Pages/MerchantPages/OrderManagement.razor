@@ -1,0 +1,1117 @@
+﻿@page "/Merchant/OrderManagement"
+@using System.Globalization
+
+@attribute [Authorize(Roles =RoleConstants.Roles.MERCHANT)]
+@inject MerChantService merchantService
+@inject ToastService toastService
+@inject NavigationManager navigationManager
+@implements IAsyncDisposable
+<PageTitle>订单管理 - FoodHub</PageTitle>
+
+<div class="container-fluid">
+
+    <!-- 页面标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1 text-gray-800">订单管理</h1>
+            <p class="mb-0 text-muted small">
+                管理店铺订单、处理接单与配送状态
+            </p>
+        </div>
+
+        <button class="btn btn-sm btn-primary shadow-sm"
+                @onclick="DefaultLoadInfoAsync"
+                disabled="@IsLoading">
+
+            <i class="fas fa-sync-alt me-1 @(IsLoading ? "fa-spin" : "")"></i>
+
+            @(IsLoading ? "刷新中..." : "刷新订单")
+        </button>
+    </div>
+
+
+    <!-- ==================== 统计卡片 ==================== -->
+
+    <div class="row">
+
+        <!-- 全部订单 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                全部订单
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @AllCount
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-receipt fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 待接单 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                待接单
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @PendingCout
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 制作中 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                制作中
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @MakingCount
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-utensils fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 配送中 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                配送中
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @DeliveringOrders
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-motorcycle fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 今日完成 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                今日完成
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @TodayFinishCount
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 今日营业额 -->
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
+                                今日营业额
+                            </div>
+
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ¥@TodayTurnover.ToString("N2")
+                            </div>
+                        </div>
+
+                        <div class="col-auto">
+                            <i class="fas fa-yen-sign fa-2x text-gray-300"></i>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- ==================== 查询区域 ==================== -->
+
+    <div class="card shadow mb-4">
+
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-search me-1"></i>
+                订单查询
+            </h6>
+        </div>
+
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <!-- 关键词 -->
+                <div class="col-md-4 mb-3">
+
+                    <label class="form-label">
+                        订单关键词
+                    </label>
+
+                    <input class="form-control"
+                           placeholder="订单号 / 顾客姓名 / 手机号"
+                           @bind="Keyword"
+                           @bind:event="oninput"
+                           @bind:after="SearchOrders"
+                           />
+
+                </div>
+
+
+                <!-- 订单状态 -->
+                <div class="col-md-3 mb-3">
+
+                    <label class="form-label">
+                        订单状态
+                    </label>
+
+                    <select class="form-select"
+                            @bind="SelectStatusFilter"
+                            @bind:after="SearchOrders"
+                    >
+                    <option value="-1">全部</option>
+
+                       @foreach (OrderStatus status in Enum.GetValues<OrderStatus>()) {
+                       
+                           <option value="@((int)status)">@status.GetDisplayName()</option>
+
+                       }
+
+                    </select>
+
+                </div>
+
+
+                <!-- 日期 -->
+               
+                    <div class="col-md-3">
+                        <label class="form-label">选择日期</label>
+                        <input type="date"
+                               class="form-control"
+                               @bind="SelectDate"
+                               @bind:after="SearchOrders" />
+                    </div>
+
+                 
+     
+
+                <!-- 查询按钮 -->
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+
+                    <div class="w-100">
+
+                        <button class="btn btn-primary w-100 mb-1"
+                                @onclick="SearchOrders">
+
+                            <i class="fas fa-search me-1"></i>
+                            查询
+
+                        </button>
+
+                        <button class="btn btn-outline-secondary w-100"
+                                @onclick="ResetSearch">
+
+                            <i class="fas fa-redo me-1"></i>
+                            重置
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== 订单列表 ==================== -->
+
+    <div class="card shadow mb-4">
+
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list me-1"></i>
+                订单列表
+            </h6>
+
+            <span class="small text-muted">
+                共 @TotalCount 条订单
+            </span>
+
+        </div>
+
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead class="table-light">
+
+                        <tr>
+
+                            <th class="px-3">
+                                订单编号
+                            </th>
+
+                            <th>
+                                顾客
+                            </th>
+
+                            <th>
+                                商品
+                            </th>
+
+                            <th>
+                                金额
+                            </th>
+
+                            <th>
+                                下单时间
+                            </th>
+
+                            <th>
+                                状态
+                            </th>
+
+                            <th class="text-center">
+                                操作
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        @if (ViewModel.Count == 0)
+                        {
+                            <tr>
+
+                                <td colspan="7"
+                                    class="text-center py-5">
+
+                                    <div class="text-muted">
+
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+
+                                        <div>
+                                            暂无订单
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var order in ViewModel)
+                            {
+                                <tr>
+
+                                    <!-- 订单编号 -->
+                                    <td class="px-3">
+
+                                        <div class="font-weight-bold">
+                                            @order.OrderNumber
+                                        </div>
+
+                                    </td>
+
+
+                                    <!-- 顾客 -->
+                                    <td>
+
+                                        <div class="font-weight-bold">
+                                            @order.BuyerDto.Name
+                                        </div>
+
+                                        @{
+                                            var phone = order.BuyerDto.Phone;
+
+                                            var head = phone.Substring(0, 3);
+
+                                            var tail = phone.Substring(phone.Length - 4, 4);
+                                        }
+                                        <div class="small text-muted">
+                                            @head****@tail
+                                        </div>
+
+                                    </td>
+
+
+                                    <!-- 商品 -->
+                                    <td>
+
+                                       
+                                        @foreach (var orderItem in order.orderItemDtos) 
+                                        { 
+                                            <div>
+                                                @orderItem.GenerateProductSummary()
+                                            </div>
+                                        }
+                                        
+
+                                    </td>
+
+
+                                    <!-- 金额 -->
+                                    <td>
+
+                                        <span class="font-weight-bold text-dark">
+                                            ¥@order.TotalPrice.ToString("N2")
+                                        </span>
+
+                                    </td>
+
+
+                                    <!-- 下单时间 -->
+                                    <td>
+
+                                        <div>
+                                            @order.OrderDate.ToString("yyyy-MM-dd")
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            @order.OrderDate.ToString("HH:mm")
+                                        </div>
+
+                                    </td>
+
+
+                                    <!-- 状态 -->
+                                    <td>
+                                        @{
+                                            var badge = GetOrderStatusBadgeInfoTool.GetOrderStatusBadgeInfo(order.Status);
+                                        }
+                                        <span class="badge @badge.Bg text-dark">
+                                            <i class="fas @badge.Icon me-1"></i>
+                                            @order.Status.GetDisplayName()
+                                        </span>
+                                    </td>
+
+
+                                    <!-- 操作 -->
+                                    <td class="text-center">
+
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => ViewOrder(order.Id)">
+
+                                            <i class="fas fa-eye"></i>
+                                            查看
+
+                                        </button>
+                                        @* 待接单 *@
+                                        @if (order.Status == OrderStatus.Pending)
+                                        {
+
+                                            <button class="btn btn-sm btn-success me-1"
+                                            @onclick="() => AcceptOrder(order.Id)">
+
+                                                <i class="fas fa-check"></i>
+                                                接单
+
+                                            </button>
+
+                                            <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => RejectOrder(order.Id)">
+
+                                                <i class="fas fa-times"></i>
+                                                拒单
+
+                                            </button>
+                                        }
+                                        //餐饮制作中
+                                        else if (order.Status == OrderStatus.Making)
+                                        {
+
+                                            <button class="btn btn-sm btn-success"
+                                                    @onclick="() => OrderReady(order.Id)">
+
+                                                <i class="fas fa-check"></i>
+                                                  出餐
+
+                                            </button>
+                                        }
+                                        //拒单
+                                        else if (order.Status == OrderStatus.Reject)
+                                        {
+                                            
+                                        
+                                        }
+
+                                    </td>
+
+                                </tr>
+                            }
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            <!-- ==================== 分页 ==================== -->
+
+            <div class="d-flex justify-content-between align-items-center p-3 border-top">
+
+                <div class="small text-muted">
+                    第 @CurrentPage 页，共 @TotalPages 页
+                </div>
+
+
+                <nav>
+
+                    <ul class="pagination pagination-sm mb-0">
+
+                        <li class="page-item @(CurrentPage <= 1 ? "disabled" : "")">
+
+                            <button class="page-link"
+                                    @onclick="PreviousPage"
+                                    disabled="@(CurrentPage <= 1)">
+
+                                上一页
+
+                            </button>
+
+                        </li>
+
+
+                        @for (int i = 1; i <= TotalPages; i++)
+                        {
+                            var pageNum = i;
+
+                            <li class="page-item @(CurrentPage == pageNum ? "active" : "")">
+
+                                <button class="page-link"
+                                        @onclick="() => GoToPage(pageNum)">
+
+                                    @pageNum
+
+                                </button>
+
+                            </li>
+                        }
+
+
+                        <li class="page-item @(CurrentPage >= TotalPages ? "disabled" : "")">
+
+                            <button class="page-link"
+                                    @onclick="NextPage"
+                                    disabled="@(CurrentPage >= TotalPages)">
+
+                                下一页
+
+                            </button>
+
+                        </li>
+
+                    </ul>
+
+                </nav>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@code {
+    // =========================================================
+    // 查询条件
+    // =========================================================
+    private int SelectStatusFilter { get; set; } = -1;
+
+    private string? Keyword { get; set; } = string.Empty;
+
+    private OrderStatus? SelectedStatus { get; set; }
+
+    // private DateTime? SelectedDate { get; set; } 
+
+    private DateTime? SelectDate { get; set; }
+    // =========================================================
+    // 分页
+    // =========================================================
+
+    private int CurrentPage { get; set; } = 1;
+
+    private int PageSize { get; set; } = 10;
+
+    private int TotalPages { get; set; }
+
+
+
+    // =========================================================
+    // 订单数据
+    // =========================================================
+
+    private List<OrderDto> ViewModel { get; set; } = new();
+    //可变总量
+    private int TotalCount { get; set; }
+    //不可变订单总量
+    private int AllCount { get; set; }
+    //待接单订单总量
+    private int PendingCout { get; set; }
+    //制作中总量
+    private int MakingCount { get; set; }
+    //配送中总量
+    private int DeliveringOrders { get; set; }
+    //今日完成总量
+    private int TodayFinishCount { get; set; }
+    //今日营业额
+    private decimal TodayTurnover { get; set; }
+    //刷新加载
+    private bool IsLoading { get; set; } = false;
+
+    // =========================================================
+    // 初始化
+    // =========================================================
+
+    //图标
+    private string Icon { get; set; } = string.Empty;
+
+    private string BgColor { get; set; } = string.Empty;
+    //防抖Token
+    private CancellationTokenSource? _searchCts; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        await DefaultLoadInfoAsync();
+    }
+
+    private async Task DefaultLoadInfoAsync()
+    {
+        if (IsLoading)
+        {
+            return;    
+        }
+
+        try
+        {
+            IsLoading = true;
+
+            SelectedStatus = null;
+
+            Keyword = null;
+
+            SelectDate = null;
+
+            var request = new PagedGetOrdersRequest(CurrentPage, PageSize, SelectedStatus, Keyword, null);
+
+            await RefreshOrdersInfoAsync(request);
+
+            var result = await merchantService.GetOrdersDataAsync();
+
+            if (!result.IsSuccess) { return; }
+
+            if (result.Data == null) return;
+
+            var ordersData = result.Data;
+
+            AllCount = ordersData.TotalCount;
+            //待接单
+            PendingCout = ordersData.PendingCount;
+            //制作中
+            MakingCount = ordersData.MakingCount;
+            //配送中
+            DeliveringOrders = ordersData.SendingCount;
+            //今日已经完成
+            TodayFinishCount = ordersData.TodayFinishedCount;
+            //今日营业额
+            TodayTurnover = ordersData.TodayTurnover;
+
+        }
+        catch (Exception)
+        {
+
+        }
+        finally
+        {
+
+            IsLoading = false;
+
+        }
+
+    }
+
+    private async Task LoadInfoAsync()
+    {
+        try
+        {
+            var dateString = SelectDate?.ToString("yyyy-MM-dd");
+
+            if (SelectStatusFilter == -1)
+            {
+
+                SelectedStatus = null;
+
+            }
+            else
+            {
+
+                SelectedStatus = (OrderStatus)SelectStatusFilter;
+
+            }
+            var request = new PagedGetOrdersRequest(CurrentPage, PageSize, SelectedStatus, Keyword, dateString);
+
+            var result = await merchantService.GetOrdersAsync(request);
+
+            if (!result.IsSuccess)
+            {
+                return;
+
+            }
+            else
+            {
+                if (result.Data != null)
+                {
+                    ViewModel = result.Data.Items;
+
+                    TotalCount = result.Data.TotalCount;
+
+                    TotalPages = result.Data.TotalPages;
+                }
+
+
+            }
+        }
+        catch (Exception)
+        {
+
+        }
+    }
+
+    // =========================================================
+    // 加载订单
+    // =========================================================
+
+    private async Task RefreshOrdersInfoAsync(PagedGetOrdersRequest request)
+    {
+        try
+        {
+            var result = await merchantService.GetOrdersAsync(request);
+
+            if (!result.IsSuccess)
+            {
+                toastService.ShowError($"加载订单信息失败");
+
+                return;
+            }
+            else
+            {
+                if (result.Data != null)
+                {
+                    ViewModel = result.Data.Items;
+
+                    TotalCount = result.Data.TotalCount;
+
+                    TotalPages = result.Data.TotalPages;
+                }
+
+            }
+        }
+        catch (ArgumentNullException e)
+        {
+        }
+        catch (Exception e)
+        {
+
+        }
+        // Orders = new List<OrderViewModel>
+        // {
+        //     new()
+        //     {
+        //         Id = 10001,
+        //         OrderNumber = "FH202609160001",
+        //         CustomerName = "张先生",
+        //         CustomerPhone = "138****1234",
+        //         ProductSummary = "宫保鸡丁 × 1，米饭 × 1",
+        //         TotalAmount = 38.00m,
+        //         CreatedAt = DateTime.Now.AddMinutes(-10),
+        //         Status = OrderStatus.Pending
+        //     },
+
+        //     new()
+        //     {
+        //         Id = 10002,
+        //         OrderNumber = "FH202609160002",
+        //         CustomerName = "李女士",
+        //         CustomerPhone = "139****5678",
+        //         ProductSummary = "鱼香肉丝 × 1，可乐 × 1",
+        //         TotalAmount = 32.00m,
+        //         CreatedAt = DateTime.Now.AddMinutes(-25),
+        //         Status = OrderStatus.Preparing
+        //     },
+
+        //     new()
+        //     {
+        //         Id = 10003,
+        //         OrderNumber = "FH202609160003",
+        //         CustomerName = "王先生",
+        //         CustomerPhone = "137****2468",
+        //         ProductSummary = "红烧肉 × 1，青菜 × 1，米饭 × 2",
+        //         TotalAmount = 56.00m,
+        //         CreatedAt = DateTime.Now.AddMinutes(-40),
+        //         Status = OrderStatus.Delivering
+        //     },
+
+        //     new()
+        //     {
+        //         Id = 10004,
+        //         OrderNumber = "FH202609160004",
+        //         CustomerName = "赵女士",
+        //         CustomerPhone = "136****1357",
+        //         ProductSummary = "番茄炒蛋 × 1，米饭 × 1",
+        //         TotalAmount = 26.00m,
+        //         CreatedAt = DateTime.Now.AddHours(-2),
+        //         Status = OrderStatus.Completed
+        //     },
+
+        //     new()
+        //     {
+        //         Id = 10005,
+        //         OrderNumber = "FH202609160005",
+        //         CustomerName = "陈先生",
+        //         CustomerPhone = "135****7890",
+        //         ProductSummary = "麻婆豆腐 × 1，米饭 × 1",
+        //         TotalAmount = 28.00m,
+        //         CreatedAt = DateTime.Now.AddHours(-3),
+        //         Status = OrderStatus.Cancelled
+        //     }
+        // };
+
+        // FilteredOrders = Orders.ToList();
+    }
+
+
+    // =========================================================
+    // 查询
+    // =========================================================
+
+    private async Task SearchOrders()
+    {
+
+        try {
+
+            if (!await NotifiedAsync()) { return; }
+
+            //姓名、订单号、电话号码
+            CurrentPage = 1;
+
+            var dateString = SelectDate ?.ToString("yyyy-MM-dd");
+
+            if (SelectStatusFilter == -1)
+            {
+                SelectedStatus = null;
+            }
+            else
+            {
+
+                SelectedStatus = (OrderStatus)SelectStatusFilter;
+
+            }
+
+            var request = new PagedGetOrdersRequest(CurrentPage, PageSize, SelectedStatus, Keyword, dateString);
+
+            var result = await merchantService.GetOrdersAsync(request);
+
+            if (!result.IsSuccess)
+            {
+
+                return;
+
+            }
+            else
+            {   
+                if(result.Data != null)
+                {
+                    ViewModel = result.Data.Items;
+
+                    TotalCount = result.Data.TotalCount;
+
+                    TotalPages = result.Data.TotalPages;
+                }
+
+            }
+
+        }
+        catch (ArgumentNullException)
+
+        {
+
+        }
+    }
+
+    // =========================================================
+    // 重置查询
+    // =========================================================
+
+    private void ResetSearch()
+    {
+        SelectDate = null;
+
+        SelectedStatus = null;
+
+        Keyword = null;
+
+    }
+
+    // =========================================================
+    // 查看订单
+    // =========================================================
+
+    private void ViewOrder(int orderId)
+    {
+        navigationManager.NavigateTo($"Merchant/OrderDetail/{orderId}");
+
+    }
+
+
+    // =========================================================
+    // 接单
+    // =========================================================
+
+    private async Task AcceptOrder(int orderId)
+    {
+        var request = new ChangeOrderStatusRequest(orderId, OrderStatus.Making);
+
+        var result = await merchantService.ChangeOrderStatus(request);
+
+        if (result.IsSuccess)
+        {
+            var orderDto = ViewModel.FirstOrDefault(o => o.Id == orderId);
+
+            if (orderDto == null)
+            {
+                return;
+            }
+
+            orderDto.Status = OrderStatus.Making;
+
+        }
+        else
+        {
+
+        }
+
+    }
+
+
+    // =========================================================
+    // 拒单
+    // =========================================================
+
+    private async Task RejectOrder(int orderId)
+    {
+        try
+        {
+            var request = new ChangeOrderStatusRequest(orderId, OrderStatus.Reject);
+
+            var result = await merchantService.ChangeOrderStatus(request);
+
+            if (result.IsSuccess)
+            {
+                var orderDto = ViewModel.FirstOrDefault(o => o.Id == orderId);
+
+                if (orderDto == null)
+                {
+                    return;
+                }
+
+                orderDto.Status = OrderStatus.Reject;
+            }
+            else
+            {
+
+            }
+
+        }
+        catch (Exception)
+
+        {
+
+
+        }
+
+    }
+
+    // =========================================================
+    // 分页
+    // =========================================================
+
+    private async Task PreviousPage()
+    {
+        if (CurrentPage <= 1)
+            return;
+
+        CurrentPage--;
+
+        await LoadInfoAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (CurrentPage >= TotalPages)
+            return;
+
+        CurrentPage++;
+
+        await LoadInfoAsync();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages)
+            return;
+
+        CurrentPage = page;
+
+        await LoadInfoAsync();
+    }
+
+    private async Task<bool> NotifiedAsync() {
+        try
+        {
+            _searchCts?.Cancel();
+
+            _searchCts?.Dispose();
+
+            _searchCts = new CancellationTokenSource();
+
+            await Task.Delay( 500 , _searchCts.Token );
+
+            return true;
+        }
+        catch (TaskCanceledException){
+
+            return false;
+
+        }
+
+    }
+
+    public async ValueTask DisposeAsync() 
+    {
+        _searchCts?.Cancel();
+
+        _searchCts?.Dispose();
+
+    }
+    //制作好，等待取餐
+    private async Task OrderReady(int orderId)
+    {
+        try
+        {
+            var request = new ChangeOrderStatusRequest(orderId, OrderStatus.WaitingPick);
+
+            var result = await merchantService.ChangeOrderStatus(request);
+
+            if (!result.IsSuccess)
+            {
+
+            }
+            else
+            {
+                var orderDto = ViewModel.FirstOrDefault(o => o.Id == orderId);
+
+                if (orderDto == null)
+                {
+                    return;
+
+                }
+
+                orderDto.Status = OrderStatus.WaitingPick;
+
+            }
+
+        }
+        catch (Exception)
+        
+        {
+            
+        
+        }
+
+    
+    }
+}

@@ -1,0 +1,47 @@
+﻿@using FoodHub.Blazor.Client.Pages.UserPages;
+@using Microsoft.AspNetCore.Authorization;
+@using FoodHub.Blazor.Client.Shared;
+@using FoodHub.Blazor.Client.Pages.AdminPages;
+@attribute [AllowAnonymous]
+@* App.razor *@
+<CascadingAuthenticationState>
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Blazor.Client.Layout.MainLayout)">
+            
+
+            <Authorizing>
+                <div>
+                加载身份中.....
+                </div>
+            </Authorizing>    
+            
+            <NotAuthorized Context="authState">
+                    
+                   @{
+                    var user = authState.User;
+                    
+
+                    if (!user.Identity!.IsAuthenticated)
+                    {
+                            <RedirectToLogin/>
+                    }
+                  
+                    }
+            </NotAuthorized>
+
+        </AuthorizeRouteView>
+  
+    
+    </Found>
+
+    <NotFound>
+        <PageTitle>Not Found</PageTitle>
+        <LayoutView >
+            <FoodHub.Blazor.Client.Shared.NotFound/>
+        </LayoutView>
+
+    </NotFound>
+</Router>
+</CascadingAuthenticationState>
+

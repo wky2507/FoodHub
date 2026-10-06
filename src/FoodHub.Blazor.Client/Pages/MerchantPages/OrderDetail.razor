@@ -1,0 +1,1169 @@
+﻿@page "/Merchant/OrderDetail/{OrderId:int}"
+
+<PageTitle>订单详情 - FoodHub</PageTitle>
+@attribute [Authorize(Roles = $"{RoleConstants.Roles.MERCHANT}")]
+
+@inject NavigationManager navigationManager
+@inject MerChantService merChantService
+
+<div class="container-fluid">
+
+    <!-- ==================== 页面标题 ==================== -->
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+
+        <div>
+
+            <div class="mb-2">
+
+                <button class="btn btn-sm btn-outline-secondary"
+                        @onclick="GoBack">
+
+                    <i class="fas fa-arrow-left me-1"></i>
+                    返回订单列表
+
+                </button>
+
+            </div>
+
+            <h1 class="h3 mb-1 text-gray-800">
+                订单详情
+            </h1>
+
+            <p class="mb-0 text-muted small">
+                查看订单商品、顾客信息以及订单状态
+            </p>
+
+        </div>
+
+
+        <div>
+
+                @{
+                    var badge = GetOrderStatusBadgeInfoTool.GetOrderStatusBadgeInfo(ViewModel.Status);
+                }
+                <span class="badge @badge.Bg text-dark">
+                    <i class="fas @badge.Icon me-1"></i>
+                    @ViewModel.Status.GetDisplayName()
+                </span>
+         
+        </div>
+
+    </div>
+
+
+    <div class="row">
+
+        <!-- ================================================= -->
+        <!-- 左侧 -->
+        <!-- ================================================= -->
+
+        <div class="col-lg-8">
+
+
+            <!-- ==================== 订单基本信息 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-receipt me-1"></i>
+
+                        订单信息
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+                    <div class="row">
+
+
+                        <!-- 订单编号 -->
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                订单编号
+                            </div>
+
+                            <div class="font-weight-bold">
+                                @ViewModel.OrderNumber
+                            </div>
+
+                        </div>
+
+
+                        <!-- 下单时间 -->
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                下单时间
+                            </div>
+
+                            <div class="font-weight-bold">
+                                @ViewModel.OrderDate.ToString("yyyy-MM-dd HH:mm:ss")
+                            </div>
+
+                        </div>
+
+
+                        <!-- 支付状态 -->
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                支付状态
+                            </div>
+
+                            @if (ViewModel.IsPaid)
+                            {
+                                <span class="badge bg-success">
+
+                                    <i class="fas fa-check me-1"></i>
+
+                                    已支付
+
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">
+
+                                    <i class="fas fa-clock me-1"></i>
+
+                                    待支付
+
+                                </span>
+                            }
+
+                        </div>
+
+
+                        <!-- 支付时间 -->
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                支付时间
+                            </div>
+
+                            <div>
+
+                                @if (ViewModel.PaymentTime != null)
+                                {
+                                    @ViewModel.PaymentTime.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">
+                                        -
+                                    </span>
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==================== 商品信息 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-utensils me-1"></i>
+
+                        商品信息
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-hover align-middle mb-0">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th class="px-3">
+                                        商品
+                                    </th>
+
+                                    <th>
+                                        单价
+                                    </th>
+
+                                    <th>
+                                        数量
+                                    </th>
+
+                                    <th class="text-end px-3">
+                                        小计
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                @foreach (var item in ViewModel.orderItemDtos)
+                                {
+                                    <tr>
+
+                                        <td class="px-3">
+
+                                            <div class="d-flex align-items-center">
+
+                                                <img src="@PathTools.DishesImageDownloadCombine(item.ProductDto.PictureUri)"
+                                                     style="width:60px;height:60px;object-fit:cover;"
+                                                     class="rounded me-3"
+                                                     alt="@item.ProductDto.Name" />
+
+                                                <div>
+
+                                                    <div class="font-weight-bold">
+                                                        @item.ProductDto.Name
+                                                    </div>
+                                                   @* 订单项特殊选项 *@
+                                                  @*   @if (!string.IsNullOrWhiteSpace(item.Specification))
+                                                    {
+                                                        <div class="small text-muted">
+                                                            @item.Specification
+                                                        </div>
+                                                    } *@
+
+                                                </div>
+
+                                            </div>
+
+                                        </td>
+
+                                        @* 商品单价 *@
+                                        <td>
+
+                                            ¥@item.ProductDto.Price?.ToString("N2")
+
+                                        </td>
+
+                                        
+                                        <td>
+
+                                            × @item.Count
+
+                                        </td>
+
+                                        @* 小计 *@
+                                        <td class="text-end px-3">
+
+                                            <span class="font-weight-bold">
+
+                                                ¥@item.Price.ToString("N2")
+
+                                            </span>
+
+                                        </td>
+
+                                    </tr>
+                                }
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==================== 顾客备注 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-comment-alt me-1"></i>
+
+                        顾客备注
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+                    @if (string.IsNullOrWhiteSpace(ViewModel.Remark))
+                    {
+                        <span class="text-muted">
+                            顾客没有填写备注
+                        </span>
+                    }
+                    else
+                    {
+                        <div class="p-3 bg-light rounded">
+
+                            <i class="fas fa-comment-dots text-muted me-2"></i>
+
+                            @ViewModel.Remark
+
+                        </div>
+                    }
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==================== 收货信息 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-map-marker-alt me-1"></i>
+
+                        配送信息
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+                    <div class="row">
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                收货人
+                            </div>
+
+                            <div class="font-weight-bold">
+                                @ViewModel.BuyerDto.Name
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <div class="small text-muted">
+                                联系电话
+                            </div>
+
+                            <div class="font-weight-bold">
+                                @ViewModel.BuyerDto.Phone
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-12">
+
+                            <div class="small text-muted">
+                                收货地址
+                            </div>
+
+                            <div class="font-weight-bold">
+
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i>
+
+                                @ViewModel.Address
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ================================================= -->
+        <!-- 右侧 -->
+        <!-- ================================================= -->
+
+        <div class="col-lg-4">
+
+
+            <!-- ==================== 金额信息 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-calculator me-1"></i>
+
+                        订单金额
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+
+                    <div class="d-flex justify-content-between mb-3">
+
+                        <span class="text-muted">
+                            商品金额
+                        </span>
+
+                        <span>
+                            ¥@ViewModel.TotalPrice.ToString("N2")
+                        </span>
+
+                    </div>
+
+
+                    <div class="d-flex justify-content-between mb-3">
+
+                        <span class="text-muted">
+                            配送费
+                        </span>
+
+                        <span>
+                            ¥@ViewModel.DeliveryFee.ToString("N2")
+                        </span>
+
+                    </div>
+
+
+                    <div class="d-flex justify-content-between mb-3">
+
+                        <span class="text-muted">
+                            优惠金额
+                        </span>
+
+                        <span class="text-success">
+                            -¥@ViewModel.DiscountAmount.ToString("N2")
+                        </span>
+
+                    </div>
+
+
+                    <hr />
+
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <span class="font-weight-bold">
+                            实付金额
+                        </span>
+
+                        <span class="h4 mb-0 font-weight-bold text-danger">
+
+                            ¥@ViewModel.ActualPayment.ToString("N2")
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==================== 订单状态 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-stream me-1"></i>
+
+                        订单状态
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+
+                    <div class="timeline">
+
+
+                        <!-- 已下单 -->
+
+                        <div class="d-flex mb-4">
+
+                            <div class="me-3">
+
+                                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                     style="width:36px;height:36px;">
+
+                                    <i class="fas fa-check"></i>
+
+                                </div>
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    用户下单
+                                </div>
+
+                                <div class="small text-muted">
+                                    @ViewModel.OrderDate.ToString("yyyy-MM-dd HH:mm")
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                <!-- 商家接单 -->
+                @if(ViewModel.RejectedTime == DateTimeOffset.MinValue){
+
+                <div class="d-flex mb-4">
+
+                    <div class="me-3">
+
+                                
+                        @if (ViewModel.AcceptedTime != DateTimeOffset.MinValue)
+                        {
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                    style="width:36px;height:36px;">
+
+                                <i class="fas fa-check"></i>
+
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                    style="width:36px;height:36px;">
+
+                                <i class="fas fa-clock"></i>
+
+                            </div>
+                        }
+
+                    </div>
+
+                    <div>
+
+                        <div class="font-weight-bold">
+                            商家接单
+                        </div>
+
+                        <div class="small text-muted">
+
+                            @if (ViewModel.AcceptedTime != DateTimeOffset.MinValue)
+                            {
+                                @ViewModel.AcceptedTime?.ToString("yyyy-MM-dd HH:mm")
+                            }
+                            else
+                            {
+                                <span>
+                                    等待商家接单
+                                </span>
+                            }
+
+                        </div>
+
+                    </div>
+
+                    </div>
+                }
+                        //商家拒单
+                else
+                {
+                    <div class="d-flex mb-4">
+
+                        <div class="me-3">
+
+                                <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center"
+                                        style="width:36px;height:36px;">
+
+                                    <i class="fas fa-xmark"></i>
+
+                                </div>
+                                  
+
+                        </div>
+
+                        <div>
+
+                            <div class="font-weight-bold">
+                                已拒单
+                            </div>
+
+                            <div class="small text-muted">
+
+                                    @ViewModel.RejectedTime?.ToString("yyyy-MM-dd HH:mm")
+                                      
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+
+
+
+                        <!-- 制作完成 -->
+
+                        <div class="d-flex mb-4">
+
+                            <div class="me-3">
+
+                                @if (ViewModel.MealFinishedTime != DateTimeOffset.MinValue)
+                                {
+                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-check"></i>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-utensils"></i>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    制作完成
+                                </div>
+
+                                <div class="small text-muted">
+
+                                    @if (ViewModel.MealFinishedTime != DateTimeOffset.MinValue)
+                                    {
+                                        @ViewModel.MealFinishedTime?.ToString("yyyy-MM-dd HH:mm")
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            等待制作完成
+                                        </span>
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="d-flex mb-4">
+
+                            <div class="me-3">
+
+                                @if (ViewModel.MealFinishedTime != DateTimeOffset.MinValue)
+                                {
+                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-check"></i>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-utensils"></i>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    等待骑手取单
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="d-flex mb-4">
+
+                            <div class="me-3">
+
+                                @if (ViewModel.CanceledTime != DateTimeOffset.MinValue)
+                                {
+                                    <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-xmark"></i>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-utensils"></i>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    订单已经取消
+                                </div>
+                                <div class="small text-muted">
+
+                                        @ViewModel.CanceledTime?.ToString("yyyy-MM-dd HH:mm")
+                                   
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- 配送 -->
+
+                        @* <div class="d-flex mb-4">
+
+                            <div class="me-3">
+
+                                @if (Order.DeliveringAt.HasValue)
+                                {
+                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-check"></i>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-motorcycle"></i>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    配送中
+                                </div>
+
+                                <div class="small text-muted">
+
+                                    @if (Order.DeliveringAt.HasValue)
+                                    {
+                                        @Order.DeliveringAt.Value.ToString("yyyy-MM-dd HH:mm")
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            等待配送
+                                        </span>
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div> *@
+
+
+
+                        <!-- 完成 -->
+
+                        @* <div class="d-flex">
+
+                            <div class="me-3">
+
+                                @if (Order.CompletedAt.HasValue)
+                                {
+                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-check"></i>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+
+                                        <i class="fas fa-flag-checkered"></i>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                            <div>
+
+                                <div class="font-weight-bold">
+                                    订单完成
+                                </div>
+
+                                <div class="small text-muted">
+
+                                    @if (Order.CompletedAt.HasValue)
+                                    {
+                                        @Order.CompletedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            等待订单完成
+                                        </span>
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div> *@
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==================== 操作 ==================== -->
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header py-3">
+
+                    <h6 class="m-0 font-weight-bold text-primary">
+
+                        <i class="fas fa-cog me-1"></i>
+
+                        订单操作
+
+                    </h6>
+
+                </div>
+
+
+                <div class="card-body">
+
+
+                    @if (ViewModel.Status == OrderStatus.Pending)
+                    {
+                        <button class="btn btn-success w-100 mb-2"
+                        @onclick="AcceptOrderAsync">
+
+                            <i class="fas fa-check me-1"></i>
+
+                            接单
+
+                        </button>
+
+
+                        <button class="btn btn-outline-danger w-100"
+                        @onclick="RejectOrderAsync">
+
+                            <i class="fas fa-times me-1"></i>
+
+                            拒绝订单
+
+                        </button>
+                    }
+                    else if (ViewModel.Status == OrderStatus.Making)
+                    {
+                        <button class="btn btn-success w-100"
+                        @onclick="FinishMealAsync">
+
+                            <i class="fas fa-check me-1"></i>
+
+                            出餐
+
+                        </button>
+                    }
+                    else if (ViewModel.Status == OrderStatus.WaitingPick)
+                    {
+                        <button class="btn btn-success w-100"
+                                @onclick="CancelOrderAsync">
+
+                            <i class="fas fa-check me-1"></i>
+
+                            取消订单
+
+                        </button>
+                        
+                    }
+
+                    @* else if (Order.Status == OrderStatus.Completed)
+                    {
+                        <div class="alert alert-success mb-0">
+
+                            <i class="fas fa-check-circle me-1"></i>
+
+                            此订单已经完成
+
+                        </div>
+                    } *@
+                    @* else if (Order.Status == OrderStatus.Cancle)
+                    {
+                        <div class="alert alert-secondary mb-0">
+
+                            <i class="fas fa-times-circle me-1"></i>
+
+                            此订单已经取消
+
+                        </div>
+                    } *@
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@code {
+
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Inject]
+    public PathTools PathTools { get; set; } = default!;
+
+    //视图模型
+    private OrderDto ViewModel { get; set; } = new();
+
+    //界面初始化
+    protected override async Task OnInitializedAsync()
+    {
+
+        await LoadInfoAsync();
+
+    }
+
+    //加载数据
+    private async Task LoadInfoAsync()
+    {
+        try
+        {
+
+            var request = new GetOrderDetailRequest(OrderId);
+
+            var result = await merChantService.GetOrderDetailAsync(request);
+
+            if (!result.IsSuccess)
+            {
+
+            }
+            else
+            {
+                if (result.Data != null) { 
+
+                    ViewModel = result.Data;
+
+                }
+            }
+        }
+        catch (Exception)
+        {
+
+        }
+
+
+    }
+
+    private async Task AcceptOrderAsync()
+    {
+        try
+        {
+            var request = new ChangeOrderStatusRequest(ViewModel.Id, OrderStatus.Making);
+
+            var result = await merChantService.ChangeOrderStatus(request);
+
+            if (!result.IsSuccess)
+            {
+
+                return;
+
+            }
+            else
+            {
+                ViewModel.Status = OrderStatus.Making;
+
+                await LoadInfoAsync();
+            }
+
+
+        }
+
+        catch (Exception)
+        {
+
+
+        }
+
+    }
+
+
+    // =========================================================
+    // 拒绝订单
+    // =========================================================
+
+    private async Task RejectOrderAsync()
+    {
+        try
+        {
+
+            var request = new ChangeOrderStatusRequest(ViewModel.Id, OrderStatus.Reject);
+
+            var result = await merChantService.ChangeOrderStatus(request);
+
+            if (!result.IsSuccess)
+            {
+
+                return;
+
+            }
+            else
+            {
+                ViewModel.Status = OrderStatus.Reject;
+
+                await LoadInfoAsync();
+            }
+        }
+        catch (Exception)
+
+        {
+
+
+        }
+
+    }
+
+
+    // =========================================================
+    // 制作完成
+    // =========================================================
+
+    private async Task FinishMealAsync()
+    {
+        //出餐
+        var request = new ChangeOrderStatusRequest(ViewModel.Id, OrderStatus.WaitingPick);
+
+        var result = await merChantService.ChangeOrderStatus(request);
+
+        if (!result.IsSuccess)
+        {
+            return;
+
+        }
+        else
+        {
+            ViewModel.Status = OrderStatus.WaitingPick;
+
+            await LoadInfoAsync();
+        }
+    }
+
+    private async Task CancelOrderAsync()
+    {
+        try
+        {
+            var request = new ChangeOrderStatusRequest(ViewModel.Id, OrderStatus.Cancle);
+
+            var result = await merChantService.ChangeOrderStatus(request);
+
+            if (!result.IsSuccess)
+            {
+                return;
+
+            }
+            else
+            {
+                ViewModel.Status = OrderStatus.Cancle;
+
+                await LoadInfoAsync();
+            }
+        }
+        catch (Exception)
+        
+        {
+            
+        
+        }
+
+    }
+
+    private void GoBack()
+    {
+        // 使用浏览器返回上一页
+        navigationManager.NavigateTo("/Merchant/OrderManagement");
+    }
+
+}
+

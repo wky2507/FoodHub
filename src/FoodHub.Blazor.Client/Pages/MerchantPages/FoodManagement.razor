@@ -1,0 +1,709 @@
+﻿@page "/Merchant/FoodManagement"
+
+@attribute [Authorize(Roles =RoleConstants.Roles.MERCHANT)]
+@using FoodHub.Domain.Share.Constants
+@using FoodHub.Blazor.Client.Helper
+@using System.Diagnostics;
+
+@inject NavigationManager Navigation
+@inject MerChantService merChantService
+@inject ToastService toastService
+@implements IAsyncDisposable 
+<PageTitle>菜品管理 - FoodHub</PageTitle>
+
+<div class="container-fluid px-4">
+
+    @* ============================
+       页面标题
+       ============================ *@
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+
+        <div>
+
+            <h1 class="mb-1">
+                菜品管理
+            </h1>
+
+            <div class="text-muted">
+                管理店铺中的菜品信息、价格和上架状态
+            </div>
+
+        </div>
+
+
+        <button class="btn btn-primary"
+                @onclick="GoToCreateFood">
+
+            <i class="fas fa-plus me-1"></i>
+
+            新增菜品
+
+        </button>
+
+    </div>
+
+
+    @* ============================
+       搜索 / 筛选区域
+       ============================ *@
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <div class="row g-3 align-items-end">
+
+
+                @* 菜品名称 *@
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        菜品名称
+                    </label>
+
+                    <input class="form-control"
+                           placeholder="请输入菜品名称"
+                           @bind="SearchKeyword" 
+                           @oninput="SearchFoodName"
+                           />
+
+                </div>
+
+
+                @* 分类 *@
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        菜品分类
+                    </label>
+
+                    <InputSelect class="form-select" @bind-Value="SelectedCategory" @bind-Value:after="OnSearchCategory">
+
+                        @foreach (KindofFood category in Enum.GetValues<KindofFood>())
+                        {
+                            <option value="@category">@category.GetDisplayName()</option>    
+                        }
+
+                    </InputSelect>
+
+                </div>
+
+
+                @* 状态 *@
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        上架状态
+                    </label>
+
+                     <InputSelect class="form-select" @bind-Value="SaleStatus" @bind-Value:after="OnFilterChanged">
+                        @foreach (OnSaleStatus status in Enum.GetValues<OnSaleStatus>())
+                        {
+                            <option value="@status">@status.GetDisplayName()</option>
+                        
+                         }
+                    </InputSelect>
+
+
+                </div>
+
+
+                @* 查询按钮 *@
+                <div class="col-md-4">
+
+                    <button class="btn btn-primary me-2"
+                            @onclick="SearchFoods">
+
+                        <i class="fas fa-search me-1"></i>
+
+                        查询
+
+                    </button>
+
+
+                    <button class="btn btn-outline-secondary"
+                            @onclick="ResetSearch">
+
+                        <i class="fas fa-redo me-1"></i>
+
+                        重置
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    @* ============================
+       菜品列表
+       ============================ *@
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-header bg-white py-3">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div>
+
+                    <h6 class="m-0 fw-bold">
+                        菜品列表
+                    </h6>
+
+                </div>
+
+
+                <div class="text-muted small">
+
+                    共 @TotalCounts 个菜品
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card-body p-0">
+
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead class="table-light">
+
+                        <tr>
+
+                            <th style="width:100px">
+                                图片
+                            </th>
+
+                            <th>
+                                菜品名称
+                            </th>
+
+                            <th>
+                                分类
+                            </th>
+
+                            <th>
+                                价格
+                            </th>
+
+                            <th>
+                                状态
+                            </th>
+
+                            <th style="width:220px">
+                                操作
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (var food in productDtos)
+                        {
+                            <tr>
+
+                                @* 图片 *@
+                                <td>
+
+                                  @*   <img src="@pathTools.DishesImageDownloadCombine(food.PictureUri)"
+                                         class="img-thumbnail"
+                                         style="width:70px;height:70px;object-fit:cover;"
+                                         alt="@food.Name" /> *@
+                                    <ImageDownload Src="@food.PictureUri" Class="img-thumbnail" Style="width:70px;height:70px;object-fit:cover;" Alt="@food.Name" GetImageBytesAsync="imageTools.GetDishesImageAsync"/>
+                                </td>
+
+
+                                @* 名称 *@
+                                <td>
+
+                                    <div class="fw-bold">
+
+                                        @food.Name
+
+                                    </div>
+
+
+                                    <div class="small text-muted">
+
+                                        ID：@food.Id
+
+                                    </div>
+
+                                </td>
+
+
+                                @* 分类 *@
+                                <td>
+
+                                    <span class="badge bg-light text-dark">
+
+                                        @MapService.MapKindofFood(food.CategoryName)
+
+                                    </span>
+
+                                </td>
+
+
+                                @* 价格 *@
+                                <td>
+                                    <strong class="text-danger">
+                                        ¥@food.Price?.ToString("F2")
+                                    </strong>
+                                </td>
+
+                                @* 状态 *@
+                                <td>
+
+                                    @if (food.IsOnsale)
+                                    {
+                                        <span class="badge bg-success">
+
+                                            <i class="fas fa-check-circle me-1"></i>
+
+                                            在售
+
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+
+                                            已下架
+
+                                        </span>
+                                    }
+
+                                </td>
+
+
+                                @* 操作 *@
+                                <td>
+
+
+                                    @* 编辑 *@
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => EditFood(food.Id)">
+
+                                        <i class="fas fa-edit"></i>
+
+                                        编辑
+
+                                    </button>
+
+
+                                    @* 上架 / 下架 *@
+                                    @if (food.IsOnsale)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning me-1"
+                                                @onclick="() => ToggleFoodStatus(food)">
+
+                                            下架
+
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success me-1"
+                                                @onclick="() => ToggleFoodStatus(food)">
+
+                                            上架
+
+                                        </button>
+                                    }
+
+
+                                    @* 删除 *@
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteFood(food)">
+
+                                        <i class="fas fa-trash"></i>
+
+                                    </button>
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            @* ============================
+               分页区域
+               ============================ *@
+            <div class="card-footer bg-white">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <small class="text-muted">
+                        第 @CurrentPage 页 / 共 @TotalPages 页
+                    </small>
+
+                    <div>
+
+                        <button class="btn btn-sm btn-outline-secondary "
+                                @onclick="PreviousPage_Onclick"
+                                disabled="@(CurrentPage == 1)">
+                            上一页
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @onclick="NextPage_Onclick"
+                                disabled="@(CurrentPage == TotalPages)">
+                            下一页
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@code {
+
+    private string SearchKeyword = string.Empty;
+
+    private KindofFood SelectedCategory { get; set; }
+
+    private List<ProductDto> productDtos = new();
+
+    [Inject]
+    private PathTools pathTools { get; set; } = default!;
+
+    [Inject]
+    private IImageTools imageTools { get; set; } = default!;
+
+    private int CurrentPage { get; set; } = 1;
+
+    private int PageSize { get; set; } = 10;
+
+    private KindofFood? Category { get; set; }
+
+    private OnSaleStatus SaleStatus { get; set; }
+
+    private bool? IsOnSale { get; set; }
+
+    private int TotalCounts;
+
+    private int TotalPages;
+
+    private CancellationTokenSource? _searchCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+ 
+        await refreshProductList();
+    }
+
+    @* ============================
+       查询
+       ============================ *@
+
+    private void SearchFoods()
+    {
+        // TODO:
+        // 后面调用 API 查询菜品
+
+        Console.WriteLine("开始查询菜品");
+
+        Console.WriteLine($"关键词：{SearchKeyword}");
+
+        Console.WriteLine($"分类：{SelectedCategory}");
+
+        // Console.WriteLine($"状态：{SelectedStatus}");
+    }
+
+
+    @* ============================
+       重置
+       ============================ *@
+
+    private async Task ResetSearch()
+    {
+        SearchKeyword = string.Empty;
+
+        SelectedCategory = 0;
+
+        SaleStatus = 0;
+
+        try
+        {
+            await refreshProductList();
+        }
+        catch (Exception e) { 
+        
+        }
+    }
+
+
+    @* ============================
+       新增菜品
+       ============================ *@
+
+    private void GoToCreateFood()
+    {
+        // TODO:
+        Navigation.NavigateTo("/Merchant/FoodManagement/Create");
+    }
+
+
+    @* ============================
+       编辑菜品
+       ============================ *@
+
+    private void EditFood(int id)
+    {
+        // TODO:
+        Navigation.NavigateTo($"/Merchant/FoodManagement/EditDishes/{id}");
+        
+    }
+
+
+    @* ============================
+       上架 / 下架
+       ============================ *@
+
+    private async Task ToggleFoodStatus(ProductDto food)
+    {
+        // TODO:
+        // 调用 API 更新菜品状态
+        try
+        {
+
+            var request = new ChangeOnSaleStatusRequest(food.StoreId, food.Id);
+
+            var response = await merChantService.ChangeOnSaleStatusAsync(request);
+
+            if (!response.IsSuccess)
+            {
+
+                toastService.ShowError("请求失败");
+
+            }
+
+            food.IsOnsale = !food.IsOnsale;
+        }
+        catch (ArgumentNullException)
+        {
+
+        }
+        catch (Exception)
+        {
+            
+        }
+
+    }
+
+
+    @* ============================
+       删除
+       ============================ *@
+
+    private async Task DeleteFood(ProductDto food)
+    {
+        // Foods.Remove(food);
+
+        // TODO:
+        // 后面应该先弹出确认框
+        // 用户确认以后调用 API 删除
+        try
+        {
+            var request = new DeleteDishesRequest(food.StoreId, food.Id);
+
+            var response = await merChantService.DeleteDishesAsync(request);
+
+            if (!response.IsSuccess)
+            {
+
+                toastService.ShowError("删除失败");
+
+            }
+            else
+            {
+                toastService.ShowSuccess("删除成功");
+
+                await refreshProductList();
+            }
+        }
+        catch (ArgumentNullException)
+        {
+
+
+        }
+        catch (Exception)
+        {
+
+
+        }
+
+    }
+
+    private async Task refreshProductList()
+    {
+        if (SaleStatus == OnSaleStatus.All)
+        {
+
+            IsOnSale = null;
+
+        }
+        else if (SaleStatus == OnSaleStatus.IsOnSale)
+        {
+            IsOnSale = true;
+
+        }
+        else
+        {
+            IsOnSale = false;
+        }
+        var request = new PagedGetDishesRequest(CurrentPage,PageSize,SearchKeyword,SelectedCategory,IsOnSale);
+
+        var response = await merChantService.GetProductDtoListAsync(request);
+
+        if (!response.IsSuccess)
+        {
+            toastService.ShowError($"获取菜单失败,错误信息{response.Message}");
+
+            return;
+        }
+        else
+        {
+            if (response.Data != null)
+            {
+                productDtos = response.Data.Items;
+
+                TotalCounts = response.Data.TotalCount;
+
+                TotalPages = response.Data.TotalPages;
+                
+            }
+        }
+
+    }
+
+    @* ============================
+       临时 UI Model
+       ============================ *@
+
+    private async Task NextPage_Onclick()
+    {
+
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage ++;
+
+            await refreshProductList();
+        }
+
+    }
+
+    private async Task PreviousPage_Onclick()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage --;
+
+            await refreshProductList();
+        }    
+
+    }
+
+
+    private async Task OnFilterChanged()
+    {
+        try
+        {
+
+            await refreshProductList();
+
+        }
+        catch (Exception)
+        {
+            
+        
+        }
+    }
+
+    private async Task SearchFoodName(ChangeEventArgs e)
+    {
+
+        SearchKeyword = e.Value?.ToString() ?? "";
+
+        if (!await NotifiedAsync()) { return; }
+
+        CurrentPage = 1;
+
+        await refreshProductList();
+
+    }
+
+    private async Task<bool> NotifiedAsync()
+    {
+        try
+        {
+            _searchCts?.Cancel();
+
+            _searchCts?.Dispose();
+
+            _searchCts = new CancellationTokenSource();
+
+            await Task.Delay(500, _searchCts.Token);
+
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            return false;
+
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+
+        _searchCts?.Cancel();
+
+        _searchCts?.Dispose();
+
+    }
+
+    private async Task OnSearchCategory()
+    {
+        try
+        {
+
+            await refreshProductList();
+
+        }
+        catch (Exception )
+        {
+            
+        
+        }
+    }
+
+
+
+}
+

@@ -1,0 +1,595 @@
+﻿@page "/applicant/merchantApply"
+@using System.ComponentModel.DataAnnotations
+@using FoodHub.BlazorShared.Dto;
+@using FoodHub.Blazor.Client.ApiService;
+@using FoodHub.BlazorShared;
+@using FoodHub.BlazorShared.Request;
+@using FoodHub.Blazor.Client.Helper;
+@using FoodHub.BlazorShared.Response;
+@using FoodHub.Blazor.Client.Component;
+@using FoodHub.Blazor.Client.Constants;
+@using System;
+@using System.Text.Json
+@using FoodHub.Blazor.Client.Interfaces;
+@using Microsoft.AspNetCore.Mvc;
+@using System.Text.RegularExpressions;
+@using Microsoft.Net.Http.Headers
+
+@rendermode InteractiveWebAssembly
+@attribute [Authorize(Roles = "USER")]
+@inject IImageTools ImageTools
+@inject NavigationManager Navigation
+@inject ToastService ToastService
+@inject IDraftService DraftService
+@implements IAsyncDisposable
+<PageTitle>申请成为商户</PageTitle>
+
+<div class="container mt-4 mb-5" style="max-width: 768px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h3 class="card-title mb-0 fs-4 fw-bold">商户入驻申请</h3>
+        </div>
+        <div class="card-body p-4">
+
+            @if (isSubmitted)
+            {
+                <div class="alert alert-success text-center py-4">
+                    <h4 class="alert-heading fw-bold">申请已提交成功！</h4>
+                    <p class="mb-0">您的商户入驻申请正在审核中，请耐心等待管理员审核。</p>
+                </div>
+            }
+            else
+            {
+                if (editContext != null) { 
+                <EditForm EditContext="@editContext" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator/>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+                   
+                    <!-- 1. 店铺基本信息 -->
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-primary" @onclick="ResetClick"> 重置内容 </button>
+                            <br />  <br />
+                        <h5 class="fw-bold border-bottom pb-2 text-secondary">店铺信息</h5>
+                        <div @onkeydown="HandleKeyDown" @onkeydown:preventDefault="isEnter">
+                        <div class="mb-3">
+                            <label class="form-label required">店铺名称</label>
+                            <input @bind="InputModel.StoreName" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="请输入店铺完整名称" />
+                            <ValidationMessage For="@(() => InputModel.StoreName)" class ="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label required">店铺地址</label>
+                            <input @bind="InputModel.Address" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="请输入详细的经营地址" />
+                            <ValidationMessage For="@(() => InputModel.Address)" class="text-danger small" />
+                        </div>
+                         <div class="mb-3">
+                            <label class="form-label required">店铺联系电话</label>
+                            <input @bind="InputModel.Phone" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="请输入联系人电话" />
+                            <ValidationMessage For="@(() => InputModel.Phone)" class="text-danger small" />
+                        </div>
+
+                        </div>
+                        <!-- 营业执照图片上传框 -->
+                        <div class="mb-3">
+                            <label class="form-label required">营业执照图片</label>
+                            
+                            <!-- 1. 文件选择框 -->
+                            <InputFile id="imageInput" OnChange="HandleFileSelected" accept=".jpg,.png,.jpeg" class="form-control d-none" />
+                            <br />
+                            <label for="imageInput" class="btn btn-primary"> 请选择图片</label>
+
+                            <span>@Path.GetFileName(InputModel.LicenseImage_Url)</span>
+                            <!-- 2. 上传等待状态 -->
+                            @if (isUploadingImage)
+                            {
+                                <div class="mt-2 text-primary small">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    图片上传中，请稍候...
+                                </div>
+                            }
+
+                            <!-- 3. 上传成功后的图片预览 -->
+                            @if (!string.IsNullOrEmpty(InputModel.LicenseImage_Url))
+                            {
+                                @* <div class="mt-2">
+                                    <img src="@DownloadPath" alt="营业执照预览" class="img-thumbnail" style="max-height: 150px;"/>
+                                    <span class="text-success small d-block mt-1">✓ 图片已成功上传</span>
+                                </div> *@
+                                  <div class="mt-2">
+                                    <ImageDownload Src="@InputModel.LicenseImage_Url" Alt="营业执照预览" Class="img-thumbnail" Style="max-height: 150px;" GetImageBytesAsync="imageTools.GetLicenseImageAsync" />
+                                        <span class="text-success small d-block mt-1">✓ 图片已成功上传</span>
+
+                                    </div>
+                                }
+
+                            <!-- 隐藏式校验：确保用户必须先完成上传才能提交 -->
+                            <ValidationMessage For="@(() => InputModel.LicenseImage_Url)" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    <!-- 2. 联系人信息列表 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="fw-bold text-secondary mb-0">联系人信息</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddContact">
+                                + 添加联系人
+                            </button>
+                        </div>
+                        @for (int i = 0; i < InputModel.Contacts.Count; i++)
+                        {
+                            var index = i;
+
+                            var contact = InputModel.Contacts[index];
+
+                            <div class="card bg-light border-0 mb-3">
+                                <div class="card-body position-relative">
+
+                                    @if (InputModel.Contacts.Count > 1)
+                                    {
+                                        <button type="button" class="btn-close position-absolute end-0 top-0 m-3"
+                                                aria-label="Close" @onclick="() => RemoveContact(index)"></button>
+                                    }
+
+                                    <div @onkeydown="HandleKeyDown" @onkeydown:preventDefault="isEnter" class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label required">联系人姓名</label>
+                                                <input @bind="contact.Name" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="张三" />
+                                            <ValidationMessage For="@(() => contact.Name)" class="text-danger small" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label required">联系电话</label>
+                                                <input @bind="contact.Phone" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="13800138000"  />
+                                            <ValidationMessage For="@(() => contact.Phone)" class="text-danger small"  />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label required">联系人身份证号</label>
+                                            <input @bind="contact.ID_Number" @bind:event="oninput" @bind:after="NotifyFormChanged" class="form-control" placeholder="0000000000000" />
+                                            <ValidationMessage For="@(() => contact.ID_Number)" class="text-danger small" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label required" >联系人角色</label>
+                                        <InputSelect @bind-value = "contact.PersonRoles" @bind-value:after="NotifyFormChanged"  class="form-select" >
+                                                <option value="">请选择角色</option>
+                                                @foreach (var role in Enum.GetValues<ContactPersonRoles>())
+                                                {
+                                                    <option value="@role">@role.GetDisplayName()</option>
+                                                }
+                                        </InputSelect>
+                                            <ValidationMessage For="@(() => contact.PersonRoles)" class="text-danger small" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <ValidationMessage For="@(() => InputModel.Contacts)" class=" text-danger " />
+
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>提交中...</span>
+                            }
+                            else
+                            {
+                                <span>提交申请</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+                }
+            }
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .required::after {
+        content: " *";
+        color: red;
+    }
+</style>
+
+
+@code {
+    #nullable enable
+
+    [Inject]
+    private IOptions<BaseUrlConfiguration>? Options{ get; set; }
+
+    [Inject]
+    private ApplicantService? ApplicantService { get; set; }
+
+    [Inject]
+    private IOptions<BaseUrlConfiguration>? Option { get; set; }
+
+    [Inject]
+    private IImageTools imageTools { get; set; } = default!;
+
+    private ApplicantDto InputModel  = new();
+
+    private CancellationTokenSource? _saveCts;
+
+    private string _lastSnapshot = string.Empty;
+
+    private const string draftKey = DraftKeys.MerchantApply;
+
+    private string? _apiUrl { get; set; }
+
+    private bool isSubmitting = false;
+
+    private bool isSubmitted = false;
+
+    private bool isUploadingImage = false;
+
+    private string? errorMessage;
+
+    private bool isEnter = false;
+
+    private string DownloadPath = string.Empty;
+
+    private EditContext editContext = default!;
+
+    private ValidationMessageStore validationMessageStore = default!;
+
+    private string fileName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Options == null)
+        {
+            errorMessage = "初始化失败，请刷新重试!";
+
+            return;
+        }
+        _apiUrl = Options.Value.ApiBase;
+
+        var draft = await DraftService.LoadAsync<ApplicantDto>(DraftKeys.MerchantApply);
+
+        if (draft != null)
+        {
+            InputModel = draft;
+
+            ToastService.ShowSuccess("已经恢复上次未提交的申请草稿");
+        }
+
+        // 默认初始化一个联系人
+        if (!InputModel.Contacts.Any())
+        {
+            await AddContact();
+        }
+
+        _lastSnapshot = JsonSerializer.Serialize(InputModel);
+
+        fileName = Path.GetFileName(InputModel.LicenseImage_Url);
+
+        DownloadPath = Path.Combine(Option!.Value.ApiBase, "download/license", fileName);
+
+        editContext = new EditContext(InputModel);
+
+        validationMessageStore = new ValidationMessageStore(editContext);
+
+        editContext.OnFieldChanged += HandleFieldChanged;
+
+        editContext.OnFieldChanged += OnformFiledChanged;
+
+    }
+
+    // protected override async Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     editContext = new EditContext(InputModel);
+
+    //     validationMessageStore = new ValidationMessageStore(editContext);
+    // }
+
+    //自动保存
+    private async Task NotifyFormChanged()
+    {
+        _saveCts?.Cancel();
+
+        _saveCts = new CancellationTokenSource();
+
+        try
+        {
+            //等3秒，3秒如果执行Cancle，直接抛异常不往下走
+            await Task.Delay(3000, _saveCts.Token);
+
+            var snapshot = JsonSerializer.Serialize(InputModel);
+
+            if (snapshot == _lastSnapshot)
+            {
+                return;
+            }
+
+            _lastSnapshot = snapshot;
+
+            await DraftService.SaveAsync(DraftKeys.MerchantApply, InputModel);
+
+            // ToastService.ShowSuccess("申请草稿已经自动保存");
+
+        }
+        catch (TaskCanceledException)
+        {
+
+        }
+
+    }
+
+    private async Task AddContact()
+    {
+        InputModel.Contacts.Add(new ContactDto());
+
+        await NotifyFormChanged();
+
+        // StateHasChanged();
+    }
+
+    private async Task RemoveContact(int index)
+    {
+
+        InputModel.Contacts.RemoveAt(index);
+
+        await NotifyFormChanged();
+
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+
+        errorMessage = null;
+
+        try
+        {
+
+
+            if (InputModel == null || ApplicantService == null)
+            {
+                errorMessage = "提交异常,请重试!";
+
+                return;
+            }
+
+            // 调用后端 API 保存申请记录
+            // var response = await Http.PostAsJsonAsync("api/MerchantApplications", InputModel);
+            var request = new ApplicantDto(InputModel.StoreName, InputModel.Address, InputModel.LicenseImage_Url,InputModel.Phone,InputModel.Contacts);
+            #nullable disable
+
+            var applicantResponse = await ApplicantService.ApplicantSubmit(request);
+
+
+            if (applicantResponse == null || !applicantResponse.IsSuccess)
+            {
+
+                var problem = JsonSerializer.Deserialize<ValidationProblemDto>(applicantResponse.Message, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if(problem?.Errors != null)
+                {
+                    ShowServerValidationErrors(problem.Errors);
+                }
+
+                errorMessage = $"请求失败{applicantResponse.Data.Message}";
+
+                return;
+            }
+            else
+            {
+                await DraftService.RemoveAsync(draftKey);
+
+                ToastService.ShowSuccess("申请提交成功");
+
+                isSubmitted = true;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"系统异常: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    //用户选择文件的时候触发
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        // var file = e.File;
+
+        // if (file == null)
+        // {
+        //     errorMessage = "文件上传失败,请重试";
+
+        //     return;
+        // }
+
+        // long maxFileSize = 1024 * 1024 * 5;
+
+        // if(file.Size > maxFileSize){
+
+        //     errorMessage = "上传图片不能超过5MB,请重新尝试";
+
+        //     return;
+        // }
+
+        // isUploadingImage = true;
+
+        // errorMessage = null;
+
+        try
+        {
+            // using var content = new MultipartFormDataContent();
+            // StreamContent把流包装成HttpContent
+            // var fileContent = new StreamContent(file.OpenReadStream(maxFileSize));
+
+            // fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+            // content.Add(fileContent, "file", file.Name);
+
+            // if (_apiUrl == null)
+            // {
+            //     errorMessage = "出错了，请刷新重试!";
+            //     return;
+            // }
+
+            // var response = await httpService.HttpPost($"{_apiUrl}Upload/license", content);
+
+            var response = await ImageTools.UploadLicenseImage(e);
+
+
+            if (response.IsSuccess && response.Data != null && !string.IsNullOrWhiteSpace(response.Data.Url))
+            {
+
+                InputModel.LicenseImage_Url = response.Data.Url;
+
+                var fileName = Path.GetFileName(InputModel.LicenseImage_Url);
+
+                DownloadPath = Path.Combine(Option!.Value.ApiBase, "download/license", fileName ?? " ");
+
+                var fieldId = editContext.Field(nameof(InputModel.LicenseImage_Url));
+
+                editContext.NotifyFieldChanged(fieldId);
+
+                await NotifyFormChanged();
+
+            }
+            else
+            {
+                ToastService.ShowError("上传失败");
+
+                return;
+            }
+
+        }
+        catch (Exception ex)
+        {
+
+            errorMessage = $"图片上传出现异常:{ex.Message}";
+
+        }
+        finally
+        {
+            isUploadingImage = false;
+
+        }
+
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+
+            await DraftService.SaveAsync(draftKey, InputModel);
+
+            if (editContext != null)
+            {
+                //防止外部引用editContext的时候，这些事件被editContext持有，就会导致组件的实例被持有，无法释放，内存泄漏
+
+                editContext.OnFieldChanged -= HandleFieldChanged;
+
+                editContext.OnFieldChanged -= OnformFiledChanged;
+            }
+
+        }
+        catch
+        {
+
+        }
+        _saveCts?.Cancel();
+
+        _saveCts?.Dispose();
+
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        // 默认行为有提交表单，表单校验，现在只要表单校验，不要提交表单
+        isEnter = (e.Key == "Enter");
+
+    }
+
+    private void ShowServerValidationErrors(IDictionary<string, string[]> errors)
+    {
+
+        validationMessageStore.Clear();
+
+        foreach (var error in errors)
+        {
+            var fieldName = error.Key;
+
+            var match = Regex.Match(
+                fieldName,
+                @"Contacts\[(\d+)\]\.(.+)");
+
+            if (!match.Success)
+            {
+                continue;    
+            }
+            var index = int.Parse(match.Groups[1].Value);
+
+            var propertyName = match.Groups[2].Value;
+
+            if(index < 0 || index >= InputModel.Contacts.Count)
+            {
+                continue;
+            }
+
+            var contact = InputModel.Contacts[index];
+
+            var fieldIdentifier = new FieldIdentifier(
+                contact,
+                propertyName
+            );
+
+            validationMessageStore.Add(
+                fieldIdentifier,
+                error.Value
+            );
+
+        }
+
+        editContext.NotifyValidationStateChanged();
+
+    }
+
+    #nullable enable
+    //当重新输入的时候应该把validationmessage给重置清空
+    private void HandleFieldChanged(object? sender,FieldChangedEventArgs e)
+    {
+        validationMessageStore.Clear();
+
+        editContext.NotifyValidationStateChanged();
+    }
+
+    //当表单有变化的时候里面执行
+    private void OnformFiledChanged(object? sender,FieldChangedEventArgs e)
+    {
+
+        _ = NotifyFormChanged();
+       
+    }
+    private void ResetClick()
+    {
+
+        InputModel = new();
+
+        editContext = new EditContext(InputModel);
+
+    }
+
+}

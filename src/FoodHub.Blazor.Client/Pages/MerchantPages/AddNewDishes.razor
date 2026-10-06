@@ -1,0 +1,771 @@
+﻿@page "/Merchant/FoodManagement/Create"
+@attribute [Authorize(Roles= RoleConstants.Roles.MERCHANT)]
+
+@using System.ComponentModel.DataAnnotations
+@using FoodHub.Blazor.Client.ApiService.Merchant;
+@using static System.Net.WebRequestMethods
+@using System.Text.Json;
+
+@layout MerchantLayout
+@inject HttpClient Http
+@inject MerChantService MerChantService
+@inject ToastService toastService
+@inject IDraftService draftService
+@inject IImageTools ImageTools
+
+@implements IAsyncDisposable
+<PageTitle>新增菜品 - FoodHub</PageTitle>
+
+<div class="container-fluid px-4">
+
+    @* ============================
+       页面标题
+       ============================ *@
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+
+        <div>
+
+            <h1 class="mb-1">
+                新增菜品
+            </h1>
+
+            <div class="text-muted">
+                填写菜品信息，将菜品添加到您的店铺
+            </div>
+
+        </div>
+
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="GoBack">
+
+            <i class="fas fa-arrow-left me-1"></i>
+
+            返回菜品管理
+
+        </button>
+
+    </div>
+
+    @if(editContext != null){
+    <EditForm EditContext="@editContext"
+              OnValidSubmit="HandleSubmit">
+
+        <DataAnnotationsValidator />
+
+        <ValidationSummary />
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            
+            <div class="alert alert-danger" role="alert">
+                @errorMessage
+            </div>
+        
+        }
+
+        <div class="row">
+
+
+            @* ==========================================
+               左侧主要表单
+               ========================================== *@
+            <div class="col-lg-8">
+
+
+                @* ============================
+                   基本信息
+                   ============================ *@
+                <div class="card border-0 shadow-sm mb-4">
+
+                        <div class="card-header bg-white py-3 d-flex justify-content-start align-items-center">
+
+                        <h5 class="mb-0">
+
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+
+                            基本信息
+
+                        </h5>
+                        
+                        <div class="ms-3">
+                           <button type="button" class="btn btn-primary" @onclick="Reset_Onclick">
+
+                                重置
+                           </button>
+                        </div>
+                    </div>
+
+
+                    <div class="card-body">
+
+
+                        <div class="row">
+                            <div @onkeydown="HandleKeyDown" @onkeydown:preventDefault="isEnter">
+                            @* 菜品名称 *@
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    菜品名称
+
+                                    <span class="text-danger">*</span>
+
+                                </label>
+
+                                <InputText class="form-control"
+                                           @bind-Value="productDto.Name"
+                                           placeholder="请输入菜品名称" />
+
+                                <ValidationMessage For="@(() => productDto.Name)" />
+
+                            </div>
+
+
+                            @* 菜品分类 *@
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    菜品分类
+
+                                    <span class="text-danger">*</span>
+
+                                </label>
+
+                                <InputSelect
+                                    class="form-select"
+                                    @bind-Value="productDto.SelectCategory"
+                                    @bind-Value:after="OnChangeKindofDishes">
+                              
+                                    @foreach (KindofFood category in Enum.GetValues<KindofFood>())
+                                    {
+                                        if (category == KindofFood.None)
+                                        {
+                                            <option value="">---请选择菜品分类---</option>
+                                        }
+                                        else 
+                                            {
+                                                //value是传给SelectCategory的,不写会<option>文本</option>文本传过去，非常不好
+                                            <option value ="@category">@category.GetDisplayName()</option>    
+                                        }
+                                    }
+                       
+                                </InputSelect>
+
+                                <ValidationMessage For="@(() => productDto.SelectCategory)" />
+
+                            </div>
+
+
+                            @* 菜品价格 *@
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    菜品价格
+
+                                    <span class="text-danger">*</span>
+
+                                </label>
+
+
+                                <div class="input-group">
+
+                                    <span class="input-group-text">
+
+                                        ¥
+
+                                    </span>
+
+                                    <InputNumber class="form-control"
+                                                  @bind-Value="productDto.Price"
+                                                  placeholder="请输入价格" />
+
+                                </div>
+
+                                <ValidationMessage For="@(() => productDto.Price)" />
+
+                            </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                @* ============================
+                   菜品图片
+                   ============================ *@
+                <div class="card border-0 shadow-sm mb-4">
+
+                    <div class="card-header bg-white py-3">
+
+                        <h5 class="mb-0">
+
+                            <i class="fas fa-image text-primary me-2"></i>
+
+                            菜品图片(可选)
+
+                        </h5>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                上传菜品图片
+
+                                <span class="text-danger">*</span>
+
+                            </label>
+
+                            <div class="text-muted small mb-3">
+
+                                支持 JPG、PNG、JPEG 格式
+
+                            </div>
+
+
+                            <InputFile id="imageInput" OnChange="HandleFileSelected"
+                                       accept=".jpg,.png,.jpeg"
+                                       class="form-control d-none" />
+                            <br/>
+                            <label for="imageInput" class="btn btn-primary">请选择图片</label>
+                            <span>@Path.GetFileName(productDto.PictureUri)</span>
+                            <!-- 等待上传 -->
+                            @if (isUploadingImage)
+                            {
+                                <div class="mt-2 text-primary small">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    图片上传中,请稍候...
+                                </div>
+
+                            }
+                        </div>
+
+
+                        @* 图片预览 *@
+                        @if (!string.IsNullOrEmpty(productDto.PictureUri))
+                        {
+
+                            <div class="border rounded p-3">
+
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    @* <img src="@DownloadPath"
+                                         class="img-thumbnail me-3"
+                                         style="width:200px;height:150px;object-fit:cover;"
+                                         alt="菜品图片预览" /> *@
+                                    <ImageDownload Src="@productDto.PictureUri" Alt="菜品图片预览" Class="img-thumbnail me-3" Style="width:200px;height:150px;object-fit:cover;" GetImageBytesAsync="imageTools.GetDishesImageAsync"/>
+                                    <span class="text-success small d-block mt-1">✓ 图片已成功上传</span>
+
+                                    <div>
+                                       
+                                        <div class="fw-bold mb-2">
+
+                                            图片预览
+
+                                        </div>
+
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger"
+                                                @onclick="RemoveImage">
+
+                                            <i class="fas fa-trash me-1"></i>
+
+                                            删除图片
+
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        }
+
+                    </div>
+
+                </div>
+
+
+                @* ============================
+                   销售信息
+                   ============================ *@
+                <div class="card border-0 shadow-sm mb-4">
+
+                    <div class="card-header bg-white py-3">
+
+                        <h5 class="mb-0">
+
+                            <i class="fas fa-store text-primary me-2"></i>
+
+                            销售信息
+
+                        </h5>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+
+                        <div class="row">
+
+                            @* 上架状态 *@
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label d-block">
+
+                                    上架状态
+
+                                </label>
+
+
+                                <div class="form-check form-switch mt-2">
+
+                                    <InputCheckbox class="form-check-input"
+                                           type="checkbox"
+                                           id="onSaleSwitch"
+                                           @bind-Value="productDto.IsOnsale" />
+
+                                    <label class="form-check-label" for="onSaleSwitch" >
+
+                                        @if (productDto.IsOnsale)
+                                        {
+                                            <span class="text-success">
+
+                                                <i class="fas fa-check-circle me-1"></i>
+
+                                                创建后立即上架
+
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary">
+
+                                                保存为下架状态
+
+                                            </span>
+                                        }
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                @* ============================
+                   提交按钮
+                   ============================ *@
+                <div class="card border-0 shadow-sm mb-5">
+
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-end">
+
+
+                            @* 保存草稿 *@
+                            @* <button type="button"
+                                    class="btn btn-outline-secondary me-2"
+                                    @onclick="SaveDraft">
+
+                                <i class="fas fa-save me-1"></i>
+
+                                保存草稿
+
+                            </button> *@
+
+
+                            @* 提交 *@
+                            <button type="submit"
+                                    class="btn btn-primary">
+
+                                <i class="fas fa-check me-1"></i>
+
+                                保存菜品
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            @* ==========================================
+               右侧信息栏
+               ========================================== *@
+            <div class="col-lg-4">
+
+
+                @* 操作提示 *@
+                <div class="card border-0 shadow-sm mb-4">
+
+                    <div class="card-header bg-white py-3">
+
+                        <h6 class="mb-0">
+
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+
+                            发布提示
+
+                        </h6>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+                        <ul class="small text-muted ps-3 mb-0">
+
+                            <li class="mb-2">
+
+                                菜品名称建议简洁明确
+
+                            </li>
+
+                            <li class="mb-2">
+
+                                建议上传清晰的菜品图片
+
+                            </li>
+
+                            <li class="mb-2">
+
+                                请确认菜品价格填写正确
+
+                            </li>
+
+                            <li>
+
+                                上架后顾客即可看到该菜品
+
+                            </li>
+
+                        </ul>
+
+                    </div>
+
+                </div>
+
+
+                @* 当前状态 *@
+                <div class="card border-0 shadow-sm">
+
+                    <div class="card-header bg-white py-3">
+
+                        <h6 class="mb-0">
+
+                            当前发布状态
+
+                        </h6>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+
+                        @if (productDto.IsOnsale)
+                        {
+
+                            <div class="alert alert-success mb-0">
+
+                                <i class="fas fa-check-circle me-2"></i>
+
+                                保存后将自动上架
+
+                            </div>
+
+                        }
+                        else
+                        {
+
+                            <div class="alert alert-secondary mb-0">
+
+                                <i class="fas fa-pause-circle me-2"></i>
+
+                                保存后暂不上架
+
+                            </div>
+
+                        }
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    </EditForm>
+    }
+</div>
+
+
+@code {
+    [Inject]
+    private IImageTools imageTools { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private ProductDto productDto { get; set; } = new();
+
+    private EditContext editContext = default!;
+
+    private bool isUploadingImage = false;
+
+    private string errorMessage { get; set; } = string.Empty;
+
+    private string _apiUrl { get; set; } = string.Empty;
+
+    private string DownloadPath { get; set; } = string.Empty;
+
+    [Inject]
+    private IOptions<BaseUrlConfiguration> Options { get; set; } = default!;
+
+    private CancellationTokenSource? _saveCts = default!;
+
+    private string _lastSnapshot { get; set; } = string.Empty;
+
+    private bool isEnter = false;
+
+    private string? fileName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _apiUrl = Options.Value.ApiBase;
+
+        var draft = await draftService.LoadAsync<ProductDto>(DraftKeys.MerchantProduct);
+
+        if (draft != null)
+        {
+            productDto = draft;
+
+            if (!string.IsNullOrEmpty(productDto.PictureUri))
+            {
+                fileName = Path.GetFileName(productDto.PictureUri);
+
+                if (fileName == null)
+                {
+
+                    toastService.ShowError("获取图片失败");
+
+                }
+
+                DownloadPath = Path.Combine(Options.Value.ApiBase, "download/dishesImage", fileName ?? "");
+
+                toastService.ShowSuccess("已经成功恢复上次未提交内容");
+
+            }
+        }
+
+        _lastSnapshot = JsonSerializer.Serialize(productDto);
+
+        editContext = new EditContext(productDto);
+
+        editContext.OnFieldChanged += OnFormFileChanged;
+
+
+    } 
+
+
+    //上传图片
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+
+        try
+        {
+            var response = await ImageTools.UploadDishesImage(e);
+
+            if (response.IsSuccess && response.Data != null && !string.IsNullOrWhiteSpace(response.Data.Url))
+            {
+                productDto.PictureUri = response.Data.Url;
+
+                fileName = Path.GetFileName(productDto.PictureUri);
+
+                DownloadPath = Path.Combine(Options.Value.ApiBase, "download/dishesImage", fileName ?? "");
+
+                var fileId = editContext.Field(nameof(productDto.PictureUri));
+
+                editContext.NotifyFieldChanged(fileId);
+            }
+
+        }
+        catch (Exception)
+        {
+
+        }
+        finally
+        {
+
+            isUploadingImage = false;
+
+        }
+    }
+
+    //删除图片
+    private async Task RemoveImage()
+    {
+        await ImageTools.DeleteImage(productDto);
+    }
+
+    //保存菜品，加入数据库
+    private async Task HandleSubmit()
+    {
+        // TODO:
+        //
+        // 后面这里应该：
+        //
+        // 1. 上传图片
+        // 2. 获取图片 URL
+        // 3. 调用 PublicApi
+        // 4. 创建 Product
+        // 5. 成功后跳转 FoodManagement
+
+        // await Task.CompletedTask;
+
+        var result =  await MerChantService.AddDishesAsync(productDto);
+
+        if (!result.IsSuccess)
+        {
+            errorMessage = $"添加失败,{result.Message}";
+
+            return;
+        }
+        else 
+        {
+            toastService.ShowSuccess("添加成功");
+
+            productDto = new();
+
+            await draftService.SaveAsync(DraftKeys.MerchantProduct,productDto);
+
+            GoBack();
+        }
+        // Navigation.NavigateTo("/Merchant/FoodManagement");
+    }
+
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/Merchant/FoodManagement");
+    }
+
+
+
+    private void OnChangeKindofDishes() 
+    {
+
+        if ( !productDto.SelectCategory.HasValue )
+        {
+            return;
+        }
+        else
+        {
+
+            productDto.CategoryName = (int)productDto.SelectCategory;
+
+        }
+        // await NotifiedAsync();
+    }
+
+    private async Task NotifiedAsync()
+    {
+        //如果是null，就不会执行Cancel
+        _saveCts?.Cancel();
+
+        _saveCts?.Dispose();
+
+        //用到的时候再New，因为要销毁，如果一开始直接new，不记得销毁就不好
+        _saveCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(3000, _saveCts.Token);
+
+            var snapshot = JsonSerializer.Serialize(productDto);
+
+            if (snapshot == _lastSnapshot)
+            {
+                return;    
+
+            }
+
+            _lastSnapshot = snapshot;
+
+            await draftService.SaveAsync(DraftKeys.MerchantProduct, productDto);
+
+        }
+        catch(TaskCanceledException)
+        { 
+
+        }
+    }
+    //当表单
+    private void OnFormFileChanged(object? sender, FieldChangedEventArgs e)
+    {
+        _ =  NotifiedAsync();
+
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(productDto.Name) || productDto.SelectCategory != null)
+        {
+            await draftService.SaveAsync<ProductDto>(DraftKeys.MerchantProduct, productDto);
+        }
+        if (editContext != null)
+        {
+
+            editContext.OnFieldChanged -= OnFormFileChanged;
+
+        }
+        //有已经创建出来的Token，就关掉然后销毁
+        _saveCts?.Cancel();
+
+        _saveCts?.Dispose();
+
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+
+        isEnter = (e.Key == "Enter");
+
+    }
+
+    private void Reset_Onclick()
+    {
+        productDto = new();
+
+        editContext = new EditContext(productDto);
+    }
+}
+
+

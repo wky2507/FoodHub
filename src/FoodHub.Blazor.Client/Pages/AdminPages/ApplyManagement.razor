@@ -1,0 +1,921 @@
+﻿@page "/applyManagement"
+@using FoodHub.Blazor.Client.Component
+@using FoodHub.Blazor.Client.Layout
+@using FoodHub.BlazorShared.Dto
+@inject IJSRuntime JS
+@attribute [Authorize(Roles =$"{RoleConstants.Roles.ADMINISTRATORS}")]
+@layout AdminLayout
+<PageTitle>商户申请审批</PageTitle>
+
+<div class="container-fluid mt-4">
+
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">商户申请审批</h3>
+            <p class="text-muted mb-0">审核商户入驻申请并管理审批状态</p>
+        </div>
+        <span class="badge bg-warning fs-6 px-3 py-2">
+         
+            待审核:@PendingCount
+        
+        </span>
+    </div>
+
+    <!-- 筛选 + 搜索 -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="row g-3 align-items-center">
+
+                <div class="col-lg-8">
+
+                    <div class="btn-group" role="group">
+
+                        <button class="btn @(CurrentStatus == ApplicationStatus.All ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => ChangeStatus(ApplicationStatus.All)">
+                            全部
+                        </button>
+
+                        <button class="btn @(CurrentStatus == ApplicationStatus.Pending ? "btn-warning" : "btn-outline-warning")"
+                                @onclick="() => ChangeStatus(ApplicationStatus.Pending)">
+                            待审核
+                        </button>
+
+                        <button class="btn @(CurrentStatus == ApplicationStatus.Approved ? "btn-success" : "btn-outline-success")"
+                                @onclick="() => ChangeStatus(ApplicationStatus.Approved)">
+                            已通过
+                        </button>
+
+                        <button class="btn @(CurrentStatus == ApplicationStatus.Rejected ? "btn-danger" : "btn-outline-danger")"
+                                @onclick="() => ChangeStatus(ApplicationStatus.Rejected)">
+                            已驳回
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="input-group">
+
+                    <input class="form-control"
+                           placeholder="搜索店铺名称 / 联系人 / 电话"
+                           @bind="SearchKeyword"
+                           @oninput="OnSearchInput"   />
+                    <button class="btn btn-primary" @onclick="Search">
+                        搜索
+                    </button>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 主体 -->
+    <div class="row">
+
+        <!-- 左侧申请列表 -->
+        <div class="col-lg-4">
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-header bg-white fw-bold">
+                    申请列表
+                </div>
+
+                <div class="list-group list-group-flush">
+
+                    @if (!Applications.Any())
+                    {
+                        <div class="p-4 text-center text-muted">
+                            暂无申请数据
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var app in Applications)
+                        {
+                            <button class="list-group-item list-group-item-action @(SelectedApplication?.Id == app.Id ? "active" : "")"
+                                    @onclick="() => SelectApplication(app)">
+
+                                <div class="d-flex justify-content-between">
+
+                                    <strong>@app.StoreName</strong>
+
+                                    @switch (app.Status)
+                                    {
+                                        case ApplicationStatus.Pending:
+                                            <span class="badge bg-warning text-dark">待审核</span>
+                                            break;
+                                        case ApplicationStatus.Approved:
+                                            <span class="badge bg-success">已通过</span>
+                                            break;
+                                        case ApplicationStatus.Rejected:
+                                            <span class="badge bg-danger">已驳回</span>
+                                            break;
+                                    }
+
+                                </div>
+
+                                <div class="text-muted small mt-2">
+
+                                    联系人：@app.Contacts.FirstOrDefault()?.Name
+
+                                </div>
+
+                                <div class="text-muted small">
+
+                                    提交时间：@app.SubmitTime.ToString("yyyy-MM-dd HH:mm")
+
+                                </div>
+
+                            </button>
+                        }
+                    }
+
+                </div>
+
+                <!-- 分页 -->
+                <div class="card-footer bg-white">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <small class="text-muted">
+                            第 @CurrentPage 页 / 共 @TotalPages 页
+                        </small>
+
+                        <div>
+
+                            <button class="btn btn-sm btn-outline-secondary me-2"
+                                    @onclick="PreviousPage"
+                                    disabled="@(CurrentPage == 1)">
+                                上一页
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    @onclick="NextPage"
+                                    disabled="@(CurrentPage == TotalPages)">
+                                下一页
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 右侧详情 -->
+        <div class="col-lg-8">
+
+            @if (SelectedApplication == null)
+            {
+                <div class="card shadow-sm border-0 h-100">
+
+                    <div class="card-body d-flex align-items-center justify-content-center text-muted">
+
+                        请选择左侧申请查看详情
+
+                    </div>
+
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm border-0">
+
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+
+                        <h5 class="mb-0 fw-bold">申请详情</h5>
+
+                        @switch (SelectedApplication.Status)
+                        {
+                            case ApplicationStatus.Pending:
+                                <span class="badge bg-warning text-dark">待审核</span>
+                                break;
+                            case ApplicationStatus.Approved:
+                                <span class="badge bg-success">已通过</span>
+                                break;
+                            case ApplicationStatus.Rejected:
+                                <span class="badge bg-danger">已驳回</span>
+                                break;
+                        }
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <!-- 店铺信息 -->
+                        <h6 class="fw-bold border-bottom pb-2 mb-3">店铺信息</h6>
+
+                        <div class="row mb-3">
+
+                            <div class="col-md-3 text-muted">店铺名称</div>
+
+                            <div class="col-md-9 fw-semibold">@SelectedApplication.StoreName</div>
+
+                        </div>
+
+                        <div class="row mb-4">
+
+                            <div class="col-md-3 text-muted">店铺地址</div>
+
+                            <div class="col-md-9">@SelectedApplication.Address</div>
+
+                        </div>
+
+                        <!-- 营业执照 -->
+                        <h6 class="fw-bold border-bottom pb-2 mb-3">营业执照</h6>
+
+                        <div class="mb-4">
+
+                          @*   <img src="@DownloadPath"
+                                 class="img-thumbnail"
+                                 style="max-width:350px;cursor:pointer;"
+                                 @onclick="OpenImagePreview" /> *@
+                            <ImageDownload Src="@SelectedApplication.LicenseImageUrl" Class="img-thumbnail" Style="max-width:350px;cursor:pointer;" GetImageBytesAsync="imageTools.GetLicenseImageAsync" Onclick="OpenImagePreview" />
+                        </div>
+                        @* ===== 图片大图预览模态框 ===== *@
+                        @if (isImagePreviewOpen)
+                        {
+                            @* 背景遮罩 *@
+                            <div class="modal-backdrop fade show" @onclick="CloseImagePreview"></div>
+
+                            @* Modal 窗口 *@
+                            <div class="modal fade show d-block"
+                                 tabindex="-1"
+                                 role="dialog"
+                                 @onclick="CloseImagePreview">
+
+                                <div class="modal-dialog modal-dialog-centered"
+                                     style="
+                                     width: min(90vw, 90vh);
+                                     max-width: min(90vw, 90vh);
+                                     margin: auto;
+                                 "
+                                @onclick:stopPropagation="true">
+
+                                    <div class="modal-content"
+                                         style="
+                                            width: min(90vw, 90vh);
+                                            height: min(90vw, 90vh);
+                                    ">
+
+                                        <div class="modal-header d-flex justify-content-between align-items-center">
+
+                                            <h5 class="modal-title">
+                                                营业执照预览（滚轮可缩放）
+                                            </h5>
+
+                                            <div>
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary me-1"
+                                                        @onclick="ZoomIn"
+                                                        title="放大">
+                                                    +
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary me-1"
+                                                        @onclick="ZoomOut"
+                                                        title="缩小">
+                                                    -
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary me-2"
+                                                        @onclick="ResetZoom"
+                                                        title="重置">
+                                                    100%
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn-close d-inline-block"
+                                                        @onclick="CloseImagePreview"
+                                                        aria-label="Close">
+                                                </button>
+                                            </div>
+
+                                        </div>
+
+                                        <div id="imageViewerContainer"
+                                             class="modal-body p-0 bg-dark overflow-hidden"
+                                             @onwheel="HandleWheel"
+                                             @onmousedown="HandleMouseDown"
+                                             @onmousemove="HandleMouseMove"
+                                             @onmouseup="HandleMouseUp"
+                                             @onmouseleave="HandleMouseUp"
+                                             style="
+                                             flex: 1;
+                                             position: relative;
+                                             display: flex;
+                                             align-items: center;
+                                             justify-content: center;
+                                             cursor: @(isDragging ? "grabbing" : "grab");
+                                             user-select: none;
+                                         ">
+
+                                            <img src="@DownloadPath"
+                                                 draggable="false"
+                                                 @onclick:stopPropagation="true"
+                                                 style="
+                                                 max-height: 100%;
+                                                 max-width: 100%;
+                                                 transform: translate(@($"{offsetX}px"), @($"{offsetY}px")) scale(@scale);
+                                                 transform-origin: center center;
+                                                 transition: @(isDragging ? "none" : "transform 0.08s ease-out");
+                                                 user-select: none;
+                                                 pointer-events: auto;
+                                                 cursor: @(isDragging ? "grabbing" : "grab");
+                                             "
+                                                                 alt="营业执照放大图" />
+
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                          <!-- 联系人 -->
+                        <h6 class="fw-bold border-bottom pb-2 mb-3">联系人信息</h6>
+
+                        @foreach (var contact in SelectedApplication.Contacts)
+                        {
+                            <div class="card bg-light border-0 mb-3">
+
+                                <div class="card-body">
+
+                                    <div class="row">
+
+                                        <div class="col-md-6 mb-2">
+
+                                            <strong>姓名：</strong>@contact.Name
+
+                                        </div>
+
+                                        <div class="col-md-6 mb-2">
+
+                                            <strong>电话：</strong>@contact.Phone
+
+                                        </div>
+
+                                        <div class="col-md-6 mb-2">
+
+                                            <strong>身份证：</strong>@contact.ID_Number
+
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-2">
+
+                                            <strong>角色：</strong>@contact.PersonRoles.GetDisplayName()
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        }
+
+                        <!-- 审核意见 -->
+                        <h6 class="fw-bold border-bottom pb-2 mb-3 mt-4">审核意见</h6>
+
+                        <textarea class="form-control mb-4"
+                                  rows="4"
+                                  @bind="ReviewComment"
+                                  placeholder="请输入审核意见（驳回时必须填写原因）">
+                            </textarea>
+
+                        <!-- 操作按钮 -->
+                        <div class="d-flex justify-content-end gap-2">
+
+                            <button class="btn btn-danger px-4"
+                                    @onclick="RejectApplication"
+                                    disabled="@(SelectedApplication.Status != ApplicationStatus.Pending || IsProcessing)">
+
+                                @if (IsProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+
+                                驳回申请
+
+                            </button>
+
+                            <button class="btn btn-success px-4"
+                                    @onclick="ApproveApplication"
+                                    disabled="@(SelectedApplication.Status != ApplicationStatus.Pending || IsProcessing)">
+
+                                @if (IsProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+
+                                审核通过
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<GlobalToast/>
+
+@code {
+    [Inject]
+    private ToastService ToastService { get; set; } = default!;
+
+    [Inject]
+    private ApplyManageMentService ApplyManageMentService { get; set; } = default!;
+
+    [Inject]
+    private IOptions<BaseUrlConfiguration>? Option { get; set; }
+
+    [Inject]
+    private IImageTools imageTools { get; set; } = default!;
+
+    private string DownloadPath { get; set; } = string.Empty;
+
+    // ===== 分页// ===== 当前页、页面大小以及筛选状态 ===== =====
+    private int CurrentPage = 1;
+
+    private int PageSize = 10;
+
+    private int TotalPages;
+
+    private int TotalCount;
+
+    private ApplicationStatus? CurrentStatus = default!;
+
+    // ===== 数据 =====
+    private List<MerchantApplicantDto> Applications = new();
+
+    // ===== 搜索 =====
+    private string SearchKeyword = string.Empty;
+
+    // ===== 当前选中的申请 =====
+    private MerchantApplicantDto? SelectedApplication;
+
+    // ===== 审核意见 =====
+    private string ReviewComment = string.Empty;
+
+    // ===== 是否正在提交 =====
+    private bool IsProcessing = false;
+
+    //是否打开图片预览
+    private bool isImagePreviewOpen = false;
+
+    private CancellationTokenSource? _searchCts;
+
+    // 缩放控制参数
+    private double scale = 1.0;         // 当前缩放比例
+    private const double minScale = 0.5; // 最小缩小比例 (50%)
+    private const double maxScale = 5.0; // 最大放大比例 (500%)
+    private const double zoomStep = 0.15; // 每次滚轮缩放的幅度
+
+    // =========================
+    // 图片拖动
+    // =========================
+
+    private double offsetX = 0;
+    private double offsetY = 0;
+
+    private double dragStartX;
+    private double dragStartY;
+
+    private double dragStartOffsetX;
+    private double dragStartOffsetY;
+
+    private bool isDragging = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadApplicationsAsync();
+
+        SelectedApplication = Applications.FirstOrDefault();
+
+        if (SelectedApplication == null)
+        {
+            ToastService.ShowError("数据加载失败");
+
+            return;
+        }
+
+        SelectApplication(SelectedApplication);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isImagePreviewOpen)
+        {
+            await JS.InvokeVoidAsync(
+                "imageViewer.init",
+                "imageViewerContainer"
+            );
+        }
+    }
+
+    private async Task LoadApplicationsAsync()
+    {
+        // TODO：后续改成 API 获取
+        // Applications = MockData();
+        try
+        {
+            var request = new GetMerchantApplicationsRequest(CurrentPage, PageSize, CurrentStatus, SearchKeyword);
+
+            var response = await ApplyManageMentService.GetApplyInfo(request);
+
+            if (!response.IsSuccess || response == null)
+            {
+                if (response != null)
+                {
+
+                    ToastService.ShowError($"加载失败! 错误信息:{response.Message}");
+
+                }
+                return;
+            }
+
+            var result = response.Data!;
+
+            Applications = result.Items;
+
+            TotalCount = result.TotalCount;
+
+            TotalPages = result.TotalPages;
+
+            SelectedApplication = Applications.FirstOrDefault();
+
+            await Task.CompletedTask;
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"参数异常报错信息:{ex.Message}");
+        }
+        catch (HttpNetworkException ex)
+        {
+            ToastService.ShowError($"网络异常:{ex.Message}");
+
+            Console.WriteLine($"网络异常:{ex.Message}");
+        }
+
+    }
+
+    // ===== 待审核数量 =====
+    private int PendingCount =>
+        Applications.Count(x => x.Status == ApplicationStatus.Pending);
+
+    private async Task ChangeStatus(ApplicationStatus status)
+    {
+        CurrentStatus = status;
+
+        if (CurrentStatus == ApplicationStatus.All)
+        {
+            CurrentStatus = null;    
+        }
+
+        CurrentPage = 1;
+
+        await LoadApplicationsAsync();
+
+    }
+
+    // ===== 上一页 =====
+    private async Task PreviousPage()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage--;
+
+            await LoadApplicationsAsync();
+        }
+    }
+
+    // ===== 下一页 =====
+    private async Task NextPage()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage++;
+
+            await LoadApplicationsAsync();
+        }
+    }
+
+    // 搜索
+    private async Task Search()
+    {
+        CurrentPage = 1;
+
+        await LoadApplicationsAsync();
+
+    }
+
+    // ===== 选择申请 =====
+    private void SelectApplication(MerchantApplicantDto application)
+    {
+        SelectedApplication = application;
+
+        ReviewComment = application.ReviewComment ?? string.Empty;
+
+        //向服务端发送请求，把图片下载回来
+
+        var fileName = Path.GetFileName(SelectedApplication!.LicenseImageUrl);
+
+        DownloadPath = Path.Combine(Option!.Value.ApiBase, "download/license/", fileName);
+    }
+
+    // ===== 审核通过 =====
+    private async Task ApproveApplication()
+    {
+        if (SelectedApplication == null)
+            return;
+
+        IsProcessing = true;
+
+        try
+        {
+            // TODO：调用后端 API
+            // await ApplicantService.ApproveAsync(
+            //     SelectedApplication.Id,
+            //     ReviewComment);
+
+            var request = new ApproveRequest(SelectedApplication.Id,SelectedApplication.UserId,SelectedApplication.Status);
+
+            await ApplyManageMentService.ApproveApply(request);
+
+            SelectedApplication.Status = ApplicationStatus.Approved;
+
+            SelectedApplication.ReviewComment = ReviewComment;
+
+            ToastService.ShowSuccess("审核通过成功");
+
+            await Task.Delay(500);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"审核失败：{ex.Message}");
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    // ===== 驳回申请 =====
+    private async Task RejectApplication()
+    {
+        if (SelectedApplication == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(ReviewComment))
+        {
+            ToastService.ShowWarning("驳回申请必须填写审核意见");
+            return;
+        }
+
+        IsProcessing = true;
+
+        try
+        {
+            // TODO：调用后端 API
+            // await ApplicantService.RejectAsync(
+            //     SelectedApplication.Id,
+            //     ReviewComment);
+            var request = new RejectApplyRequest(SelectedApplication.Id, ReviewComment,SelectedApplication.Status,SelectedApplication.UserId);
+
+            var response = await ApplyManageMentService.RejectApply(request);
+
+            if (!response.IsSuccess)
+            {
+                ToastService.ShowError($"请求失败:{response.Message}");
+            }
+
+            SelectedApplication.Status = ApplicationStatus.Rejected;
+
+            SelectedApplication.ReviewComment = ReviewComment;
+
+            ToastService.ShowSuccess("申请已驳回");
+
+            await Task.Delay(500);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"驳回失败：{ex.Message}");
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    // ===== 图片预览 =====
+    private void OpenImagePreview()
+    {
+        isImagePreviewOpen = true;
+
+    }
+
+    private async Task CloseImagePreview()
+    {
+        await JS.InvokeVoidAsync(
+            "imageViewer.destroy",
+            "imageViewerContainer"
+        );
+
+        isImagePreviewOpen = false;
+
+        scale = 1.0;
+        offsetX = 0;
+        offsetY = 0;
+        isDragging = false;
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        SearchKeyword = e.Value?.ToString() ?? "";
+
+        _searchCts?.Cancel();
+
+        _searchCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(500, _searchCts.Token);
+
+            await Search();
+        }
+        catch(TaskCanceledException)
+        {
+            
+        
+        }
+
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (e.Button != 0)
+            return;
+
+        isDragging = true;
+
+        dragStartX = e.ClientX;
+        dragStartY = e.ClientY;
+
+        dragStartOffsetX = offsetX;
+        dragStartOffsetY = offsetY;
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (!isDragging)
+            return;
+
+        offsetX = dragStartOffsetX + (e.ClientX - dragStartX);
+        offsetY = dragStartOffsetY + (e.ClientY - dragStartY);
+    }
+
+    private void HandleMouseUp(MouseEventArgs e)
+    {
+        if (e.Button != 0 && e.Button != -1)
+            return;
+
+        isDragging = false;
+    }
+
+    // 监听鼠标滚轮事件
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (e.DeltaY < 0)
+        {
+            scale = Math.Min(maxScale, scale + zoomStep);
+        }
+        else if (e.DeltaY > 0)
+        {
+            scale = Math.Max(minScale, scale - zoomStep);
+        }
+
+        StateHasChanged();
+    }
+
+    // 按钮辅助控制
+    private void ZoomIn()
+    {
+        scale = Math.Min(maxScale, scale + zoomStep);
+    }
+
+    private void ZoomOut()
+    {
+        scale = Math.Max(minScale, scale - zoomStep);
+    }
+
+    private void ResetZoom()
+    {
+        scale = 1.0;
+        offsetX = 0;
+        offsetY = 0;
+    }
+
+    // ===== Mock 数据 =====
+    // private List<MerchantApplicantDto> MockData()
+    // {
+
+    //     return new List<MerchantApplicantDto>();
+        // return new()
+        // {
+        //     new MerchantApplicantDto
+        //     {
+        //         Id = Guid.NewGuid(),
+        //         StoreName = "鲜果时光",
+        //         Address = "北京市朝阳区建国路88号",
+        //         LicenseImageUrl = "/images/license-demo.jpg",
+        //         Status = ApplicationStatus.Pending,
+        //         SubmitTime = DateTime.Now.AddHours(-2),
+        //         Contacts =
+        //         {
+
+        //             new ContactDto("张三","13800138000","110101********1234",ContactPersonRoles.LegalRepresentative),
+
+        //             new ContactDto("李四","13900139000","110101********5678",ContactPersonRoles.Finance)
+        //             new ContactViewModel
+        //             {
+        //                 Name = "张三",
+        //                 Phone = "13800138000",
+        //                 IdNumber = "110101********1234",
+        //                 Role = "法人"
+        //             },
+        //             new ContactViewModel
+        //             {
+        //                 Name = "李四",
+        //                 Phone = "13900139000",
+        //                 IdNumber = "110101********5678",
+        //                 Role = "负责人"
+        //             }
+        //         }
+        //     },
+        //     new MerchantApplicantDto
+        //     {
+                
+
+        //         Id = Guid.NewGuid(),
+        //         StoreName = "麦香面馆",
+        //         Address = "上海市浦东新区世纪大道100号",
+        //         LicenseImageUrl = "/images/license-demo.jpg",
+        //         Status = ApplicationStatus.Approved,
+        //         SubmitTime = DateTime.Now.AddDays(-1),
+        //         ReviewComment = "资料完整，审核通过",
+        //         Contacts =
+        //         {
+        //             new ContactDto("王五","13700001111","310101********8888",ContactPersonRoles.LegalRepresentative)
+        //             {
+        //                 Name = "王五",
+        //                 Phone = "13700001111",
+        //                 IdNumber = "310101********8888",
+        //                 Role = "法人"
+        //             }
+        //         }
+        //     },
+        //     new MerchantApplicantDto
+        //     {
+        //         Id = Guid.NewGuid(),
+        //         StoreName = "张三烧烤",
+        //         Address = "广州市天河区体育西路66号",
+        //         LicenseImageUrl = "/images/license-demo.jpg",
+        //         Status = ApplicationStatus.Rejected,
+        //         SubmitTime = DateTime.Now.AddDays(-3),
+        //         ReviewComment = "营业执照图片不清晰，请重新上传",
+        //         Contacts =
+        //         {
+        //             new ContactDto("赵六","13600002222","440101********9999",ContactPersonRoles.Operations)
+        //             {
+        //                 Name = "赵六",
+        //                 Phone = "13600002222",
+        //                 IdNumber = "440101********9999",
+        //                 Role = "法人"
+        //             }
+        //         }
+        //     }
+        // };
+    }
+
+

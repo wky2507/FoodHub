@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FoodHub.Application/FoodHub.Application.csproj" />
+    <Project Path="src/FoodHub.Blazor.Client/FoodHub.Blazor.Client.csproj" />
+    <Project Path="src/FoodHub.BlazorShared/FoodHub.BlazorShared.csproj" />
+    <Project Path="src/FoodHub.Domain.Share/FoodHub.Domain.Share.csproj" />
+    <Project Path="src/FoodHub.Domain/FoodHub.Domain.csproj" />
+    <Project Path="src/FoodHub.Infrastructure/FoodHub.Infrastructure.csproj" />
+    <Project Path="src/FoodHub.PublicApi/FoodHub.PublicApi.csproj" />
+    <Project Path="src/Tests1/Tests1.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,37 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build
+bin/
+obj/
+
+# Rider
+.idea/
+
+# User-specific files
+*.user
+*.rsuser
+
+# Test results
+TestResults/
+
+# Docker
+docker-compose.override.yml
+
+# Secrets / local configuration
+appsettings.Development.json
+appsettings.Local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+src/FoodHub.PublicApi/logs/
+src/FoodHub.PublicApi/Endpoints/AuthEndpoints/logs/
+
+# png
+src/FoodHub.PublicApi/wwwroot/Uploads/DishesImages/*.png
+src/FoodHub.PublicApi/wwwroot/Uploads/Licenses/*.png

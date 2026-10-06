@@ -1,0 +1,393 @@
+﻿@page "/register"
+@inject IJSRuntime jSRuntime
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization;
+@using FoodHub.BlazorShared.Request;
+@using FoodHub.Blazor.Client.Services;
+@using FoodHub.Blazor.Client.ApiService;
+@using FoodHub.Blazor.Client.Component;
+@using FoodHub.Blazor.Client.Layout;
+@inject ToastService ToastService;
+
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+<div class="bg-primary min-vh-100">
+
+    <div id="layoutAuthentication">
+
+        <div id="layoutAuthentication_content">
+
+            <main>
+
+                <div class="container">
+
+                    <div class="row justify-content-center">
+
+                        <div class="col-lg-7">
+
+
+                            <div class="card shadow-lg border-0 rounded-lg mt-5">
+
+
+                                <div class="card-header">
+
+                                    <h3 class="text-center font-weight-light my-4">
+                                        创建账号
+                                    </h3>
+                                </div>
+
+
+                                <div class="card-body">
+
+
+                                    <EditForm Model="RegisterModel"
+                                              OnValidSubmit="Register_Click">
+
+                                        <DataAnnotationsValidator />
+
+
+                                        <div class="row mb-3">
+
+
+                                            <div class="col-md-6">
+
+
+                                                <div class="form-floating mb-3 mb-md-0">
+
+                                                    <InputText class="form-control"
+                                                               id="inputUserName"
+                                                               placeholder=" UserName"
+                                                               @bind-Value="RegisterModel.UserName" />
+                                                               <ValidationMessage For="@(() => RegisterModel.UserName)" class="text-danger"></ValidationMessage>
+
+                                                    <label for="inputUserName">
+                                                        用户名
+                                                    </label>
+
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div class="form-floating mb-3">
+
+
+                                            <InputText class="form-control"
+                                                       id="inputPhone"
+                                                       placeholder="name@example.com"
+                                                       @bind-Value="RegisterModel.Phone" />
+                                                       <ValidationMessage For="@(() => RegisterModel.Phone)"class="text-danger"></ValidationMessage>
+
+                                            <label for="inputPhone">
+                                                电话号码
+                                            </label>
+
+
+                                        </div>
+
+
+                                        <div class="form-floating mb-3">
+
+
+                                            <InputText class="form-control"
+                                                       id="inputEmail"
+                                                       placeholder="name@example.com"
+                                                       @bind-Value="RegisterModel.Email" />
+                                                       <ValidationMessage For="@(() => RegisterModel.Email)" class="text-danger"></ValidationMessage>
+
+                                            <label for="inputEmail">
+                                                邮箱
+                                            </label>
+
+
+                                        </div>
+
+
+                                        <div class="row mb-3">
+
+
+                                            <div class="col-md-6">
+
+
+                                                <div class="form-floating mb-3 mb-md-0">
+
+
+                                                    <InputText type="password"
+                                                               class="form-control"
+                                                               id="inputPassword"
+                                                               placeholder="Password"
+                                                               @bind-Value="RegisterModel.Password" />
+                                                               <ValidationMessage For="@(()=>RegisterModel.Password)" class="text-danger"></ValidationMessage>
+
+                                                    <label for="inputPassword">
+                                                        密码
+                                                    </label>
+
+
+                                                </div>
+
+
+                                            </div>
+
+
+                                            <div class="col-md-6">
+
+
+                                                <div class="form-floating mb-3 mb-md-0">
+
+
+                                                    <InputText type="password"
+                                                               class="form-control"
+                                                               id="inputPasswordConfirm"
+                                                               placeholder="Confirm Password"
+                                                               @bind-Value="RegisterModel.ConfirmPassword" />
+                                                               <ValidationMessage For="@(() => RegisterModel.ConfirmPassword)" class="text-danger"></ValidationMessage>
+
+                                                    <label for="inputPasswordConfirm">
+                                                        请确认密码
+                                                    </label>
+
+
+                                                </div>
+
+
+                                            </div>
+
+
+                                        </div>
+
+
+
+                                        <div class="mt-4 mb-0">
+
+
+                                            <div class="d-grid">
+
+
+                                                <button class="btn btn-primary btn-block"
+                                                        type="submit">
+
+                                                        创建用户
+
+                                                </button>
+
+
+                                            </div>
+
+
+                                        </div>
+
+
+                                    </EditForm>
+
+
+                                </div>
+
+
+
+
+
+                                <div class="card-footer text-center py-3">
+
+
+                                    <div class="small">
+
+                                        <a href="/login">
+                                           已经有账户？去登陆
+                                        </a>
+
+
+                                    </div>
+
+
+                                </div>
+
+
+
+                            </div>
+
+
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+
+
+            </main>
+
+
+        </div>
+
+
+
+
+
+        <div id="layoutAuthentication_footer">
+
+
+            <footer class="py-4 bg-light mt-auto">
+
+
+                <div class="container-fluid px-4">
+
+
+                    <div class="d-flex align-items-center justify-content-between small">
+
+
+                        <div class="text-muted">
+
+                            Copyright © FoodHub 2026
+
+                        </div>
+
+
+                        <div>
+
+                            <a href="#">
+                                Privacy Policy
+                            </a>
+
+                            ·
+
+                            <a href="#">
+                                Terms & Conditions
+                            </a>
+
+
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+
+
+            </footer>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+    private RegisterRequest registerRequest = new RegisterRequest();
+
+    private RegisterViewModel RegisterModel = new();
+
+    [Inject]
+    private RegisterService? _registerService { get; set; }
+
+    // [Inject]
+    // private ToastService _toastService { get; set; }
+    [Inject]
+    private ILogger<Register>? _logger { get; set; }
+
+    [Inject]
+    private ToastService? _toastService { get; set; }
+
+    [Inject]
+    private NavigationManager navigationTo { get; set; } = default!;
+
+    private async Task Register_Click()
+    {
+
+        // TODO:
+        // 调用 AuthService.RegisterAsync()
+        // 发送到 PublicApi
+        registerRequest.UserName = RegisterModel.UserName;
+
+        registerRequest.Phone = RegisterModel.Phone;
+
+        registerRequest.Email = RegisterModel.Email;
+
+        registerRequest.Password = RegisterModel.Password;
+
+        try
+        {
+            var res = await _registerService!.Register(registerRequest);
+
+            if (res!.Result == false)
+            {
+
+                // _toastService.ShowToast($"{mes}", ToastLevel.Error);
+
+                await jSRuntime.InvokeVoidAsync("showToast", "注册失败", "error");
+
+                _toastService!.ShowError($"{res.Message}");
+
+                _logger!.LogInformation(res.Message);
+            }
+
+            if (res.Result == true)
+            {
+
+                // _toastService.ShowToast($"{mes}", ToastLevel.Success);
+
+                await jSRuntime.InvokeVoidAsync("showToast", "注册成功", "success");
+
+                await Task.Delay(2000);
+
+                navigationTo.NavigateTo("/login");
+
+                _logger!.LogInformation(res.Message);
+            }
+
+        }
+     
+        catch (ArgumentNullException ex)
+        {
+
+            ToastService.ShowError($"参数为空,错误! [Error:{ex.Message}]", "参数异常");
+
+            _logger!.LogInformation($"{ex.Message}");
+
+        }
+        catch (ArgumentException ex)
+        {
+            ToastService.ShowError("参数出错", "参数异常");
+
+            _logger!.LogInformation($"{ex.Message}");
+        }
+
+    }
+
+    public class RegisterViewModel
+    {
+
+
+        [Required (ErrorMessage = "请输入用户名")]
+        public string UserName { get; set; } = "";
+
+
+        [Required(ErrorMessage = "请输入电话号码")]
+        public string Phone { get; set; } = "";
+
+        
+        [Required(ErrorMessage = "请输入邮箱")]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+
+        [Required(ErrorMessage ="请输入密码")]
+        public string Password { get; set; } = "";
+
+
+        [Required(ErrorMessage ="请再次确认密码")]
+        public string ConfirmPassword { get; set; } = "";
+
+
+
+    }
+
+
+}
+
+

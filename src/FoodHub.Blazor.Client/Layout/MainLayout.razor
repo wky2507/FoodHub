@@ -1,0 +1,80 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime jSRuntime
+@using Microsoft.AspNetCore.Authorization;
+@using FoodHub.Blazor.Client.Shared;
+@using FoodHub.Blazor.Client.Component;
+<AuthorizeView Roles="@RoleConstants.Roles.MERCHANT">
+    <Authorized>
+    <div class="sb-nav-fixed">
+
+        <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+
+            <!-- Navbar Brand-->
+            <a class="navbar-brand ps-3" href="/">FoodHub</a>
+            <!-- Sidebar Toggle-->
+            <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0 link-light" @onclick="ToggleSidebarClick" style="color:#fff"><i class="fas fa-bars"></i></button>
+            <!-- Navbar Search-->
+            <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+                <div class="input-group">
+                    <input class="form-control" type="text" placeholder="Search for..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
+                    <button class="btn btn-primary" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+            <!-- Navbar-->
+            <Navbar />
+
+        </nav>
+
+        <div id="layoutSidenav">
+
+            <div id="layoutSidenav_nav">
+
+                <NavMenu />
+
+            </div>
+
+            <div id="layoutSidenav_content">
+
+                <main>
+
+                    <div class="container-fluid px-4">
+                        @Body
+
+                    </div>
+
+                </main>
+
+            </div>
+            
+        </div>
+
+    </div>
+    </Authorized>
+    <NotAuthorized>
+
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+    <!-- Navbar-->
+    <div class="ms-auto">
+    <Navbar />
+    </div>
+    </nav>
+    <main class="d-flex justify-content-center pt‑4">
+        @Body
+    </main>
+
+    </NotAuthorized>
+</AuthorizeView>
+<!-- 🌟 挂载全局 Toast 挂件 -->
+<GlobalToast />
+
+@code{
+
+    private async Task ToggleSidebarClick()
+    {
+
+        await jSRuntime.InvokeVoidAsync("toggleSidebar");
+    }
+
+}
+

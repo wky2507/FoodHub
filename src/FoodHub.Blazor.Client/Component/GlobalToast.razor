@@ -1,0 +1,85 @@
+﻿@using FoodHub.Blazor.Client.Services
+@inject ToastService ToastService
+@implements IDisposable
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    @foreach(var toast in _toastList)
+    {
+    <div class="toast show align-items-center text-white @GetBgClass(toast.Level) border-0 mb-2 shadow-lg" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>@toast.Title</strong>
+                    <div>@toast.Message</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => RemoveToast(toast)"></button>
+            </div>
+    </div>
+     }
+
+</div>
+
+@code {
+
+    private readonly List<ToastMessage> _toastList = new();
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += HandleShowToast;
+
+        base.OnInitialized();
+    }
+
+    private void HandleShowToast(ToastMessage toast)
+    {
+        InvokeAsync(async () =>
+        {
+            _toastList.Add(toast);
+            StateHasChanged();
+
+            //4秒后自动消失
+            await Task.Delay(60000);
+            if (_toastList.Contains(toast))
+            {
+                _toastList.Remove(toast);
+                StateHasChanged();
+            }
+
+        });  
+    }
+
+    private void RemoveToast(ToastMessage toast)
+    {
+
+        _toastList.Remove(toast);
+
+    }
+
+    private string GetBgClass(ToastLevel level)
+    {
+        switch (level)
+        {
+            case ToastLevel.Error:
+
+                return "bg-danger";
+
+            case ToastLevel.Warning:
+
+                return "bg-warning text-dark";
+
+            case ToastLevel.Success:
+
+                return "bg-success";
+
+            default:
+
+                return "bg-primary";
+        }    
+    }
+
+    public void Dispose()
+    {
+
+        ToastService.OnShow -= HandleShowToast;
+
+    }
+}

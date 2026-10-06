@@ -1,0 +1,40 @@
+﻿@page "/"
+
+@using FoodHub.Blazor.Client.Helper;
+@using FoodHub.Blazor.Client.Pages.AdminPages;
+
+@rendermode InteractiveWebAssembly
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@inject NavigationManager Navigatetion
+
+<PageTitle>Counter</PageTitle>
+
+@* 验证登录 *@
+<AuthorizeView Context="auth">
+    @* 已经登录 *@
+    <Authorized>
+        @* 验证角色 *@
+      @switch (UserPortalStateHelper.GetState(auth.User))
+        {
+            case UserPortalState.ADMINISTRATORS:
+                Navigatetion.NavigateTo("/Management");
+                break;
+            case UserPortalState.MERCHANT:
+                Navigation.NavigateTo("/Merchant/Home");
+                break;
+            case UserPortalState.APPLICANT:
+                <Applicant/>
+                break;
+            default:
+                <User/>
+                break;
+        }
+
+    </Authorized>
+</AuthorizeView>
+
+@code {
+  
+
+}
