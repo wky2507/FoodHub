@@ -61,17 +61,17 @@ ORM: EF Core
 
 ### 运行示例:
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\login.png)
+![](assets\login.png)
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\apply.png)
+![](assets\apply.png)
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\merchant.png)
+![](assets\merchant.png)
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\dishes.png)
+![](assets\dishes.png)
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\order.png)
+![](assets\order.png)
 
-![](C:\Users\25073\Desktop\桌面代办\项目\photo\admin.png)
+![](assets\admin.png)
 
 ## 使用Docker运行说明:
 
